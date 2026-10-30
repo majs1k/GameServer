@@ -1,35 +1,21 @@
 # IOCPGameServer
 
-IOCP 모델 게임 서버 프로젝트입니다.
+게임 서버 프로젝트입니다.
 
-클라이언트와 서버 모두 솔루션 안에 구현되어 있습니다.
+Tech     : C++14, MySQL
 
-Tech     : C++14, MySQL, ImGui(DX11)
-
-Platform : Windows 11 x64 / Visual Studio 2022
+Platform : Windows x64 / Visual Studio 2022
 
 ---
 
 ## Details
 
-* IOCP 기반 Overlapped I/O 네트워크 라이브러리 직접 구현
-* IO / Logic / DB Thread 분리를 통한 게임 로직 단일 접근 구조
-* IDL 기반 RPC / DB Proxy-Stub 코드 자동 생성
-* Stateful Server와 서버 권위 구조
+* IOCP 네트워크 라이브러리 구현
+* IO / Logic / DB Thread
+* RPC
+* Stateful Server
 
-## Network Library
 
-IOCP 네트워크 클래스 `LanServer`를 컨텐츠에서 상속받아 이벤트를 구현합니다.
-
-```cpp
-class GameServer : public LanServer, public RpcServerStub, public DbServerStub
-{
-private:
-    bool OnConnectionRequest(const std::wstring& ip, int port) override;
-    void OnAccept(__int64 sessionId) override;
-    void OnRelease(__int64 sessionId) override;
-    void OnRecv(__int64 sessionId, Packet* packet) override;
-};
 ```
 
 ### Thread Model
@@ -69,28 +55,10 @@ private:
               └───────────────┘
 ```
 
-### Serialization
-
-커스텀 바이너리 프로토콜을 사용합니다.
-
-```text
-┌──────────────┬──────────────┬──────────────────┐
-│ size (2byte) │ type (2byte) │     payload      │
-└──────────────┴──────────────┴──────────────────┘
-```
-
-`Packet` 객체에 `operator<<`, `operator>>`를 구현하여 패킷 직렬화와 역직렬화를 처리합니다.
 
 ## RPC
 
 IDL 파일을 기반으로 Client / Server RPC 코드를 자동 생성합니다.
-
-
-```text
-// 프로토콜 정의 예시
-ReqUserRegister(std::string& loginId, std::string& password)     0
-ResUserRegister(RESPONSE_CODE code)                              1
-```
 
 ```text
                IDL
@@ -103,144 +71,14 @@ ResUserRegister(RESPONSE_CODE code)                              1
    Server Proxy      Server Stub
 ```
 
-### Server Proxy
-
-송신할 패킷을 Proxy가 담당합니다.
-
-```cpp
-void RpcServerProxy::ReqUserRegister(__int64 sessionId, std::string& loginId, std::string& password)
-{
-    Packet* packet = new Packet();
-    packet->Initialize();
-
-    // 직렬화
-    packet->GetHeaderPtr()->type_ = 0;
-    *packet << loginId << password;
-
-    // 네트워크 송신 함수
-    server_->SendPacket(sessionId, packet);
-}
-```
-
-### Server Stub
-
-수신한 패킷은 Stub에서 `type_`을 기준으로 역직렬화한 후 Handler를 호출합니다.
-
-```cpp
-bool RpcServerStub::PacketProc(__int64 sessionId, Packet* packet)
-{
-    switch (packet->GetHeaderPtr()->type_)
-    {
-        // 타입 id별 분기
-        case 0:
-        {
-			std::string loginId;
-			std::string password;
-
-            *packet >> loginId >> password;
-
-            return ReqUserRegister(sessionId, loginId, password);
-        }
-
-        case 1:
-        ...
-    }
-}
-```
-
-실제 동작은 Stub을 상속해서 `ReqUserRegister`을 컨텐츠에서 구현합니다.
-
-
-## Database
-
-DB Thread에서 쿼리요청을 직렬 처리합니다.
-
-Logic Thread는 dbReqQueue에 요청을 전달하고,
-
-DB Thread가 쿼리를 수행한 뒤 dbResQueue를 통해 결과를 전달합니다.
-
-### DB Proxy / Stub
-
-DB 요청 및 응답을 RPC와 유사한 Proxy / Stub 구조로 자동화하여,
-
-DB Thread와 Logic Thread 간 Queue를 통해 통신합니다.
-
-### Stateful Server
-
-게임 플레이 중 발생하는 모든 상태 변경은 서버 메모리를 중심으로 검증 및 처리한 후,
-
-클라이언트에 송신 후 DB에 비동기적으로 저장합니다.
-
-ex) 클라이언트가 보내는 자신의 `playerId`를 신뢰하지 않고, 
-
-서버가 Session → Player 매핑을 기준으로 처리합니다.
-
-```text
-         Client Request
-               │
-               ▼
-         Memory Update
-               │
-       ┌───────┴───────┐ 
-       │               │
-       ▼               ▼
- DB Update       Client Response  
-
-```
-
----
-
-## Current Content
-
-Implemented: 회원가입 / 로그인 / 로비 / 채팅(도배금지) / 상점 / 매치
-
-Planned: 게임 결과 처리 / 게임 플레이 컨텐츠
-
-## Folder Tree
-
-```text
-NetworkLibrary
-│
-├── Contents
-│   ├── GameServer
-│   ├── MyClient
-│   ├── RpcModule
-│   ├── Repository
-│   └── ...
-│
-├── Network
-│   ├── LanServer
-│   └── LanClient
-│
-├── Rpc
-│   ├── RpcProxy
-│   └── RpcStub
-│
-├── Database
-│   ├── Database
-│   ├── DatabaseProxy
-│   └── DatabaseStub
-│
-├── Util
-│   ├── Profiler
-│   ├── MemoryPool
-│   ├── Packet
-│   ├── RingBuffer
-│   └── ...
-│
-└── RPCGenerator
-```
-
----
-
 ## DevLog
-### 이전
+### 26-06-00
 ```text
 문제 발생 -> 원인 완벽하게 파악 (디버깅, 로그, ...) -> 해결
 
-지연삭제 -> 이터레이터로 인한 문제 방지. 즉 배열은 적용 x
+지연삭제 -> 이터레이터로 인한 문제 방지
 
-accept thread 분리, accept() 블로킹 호출 why? 쓸데없이 도는 코드는 절대 없어야함
+accept thread 분리, accept() 블로킹 호출
 
 50byte Sleep(1) 기준 wsasend 두번 호출 vs wsasend 한번에 wsabuf 2개등록
 83us / 7us
@@ -254,25 +92,14 @@ ex) struct Node {int *data = nullptr;} -> malloc 시 nullptr 대입 안됨!
 
 RinBuffer, Packet의 실제 버퍼는 반드시 buffer 메서드로 가져와야 함
 RingBuffer에 Packet을 전달해서 디큐한 다음에는 Packet의 쓰기포지션 이동
-
-먼저 워커스레드 1개로 실험
-더미테스트의 oversendcount 옵션 설정시 문제 발생
-발생원인은, sendPacket()이 여러번 호출되어 registerSend()에서 완료가 되지 않은 overlapped 객체가 초기화됨
--> sendPending 변수 도입
-다른 스레드에서 sendPacket 호출할 가능성 존재 -> pending 변수를 인터락으로 관리
-
-closesocket 이후, 같은 소켓이 생성되어도, 어차피 sendPacket()은 sessionId를 기준으로 진행되어서 문제 발생 x
 ```
 
 ### 26-06-06
 ```text
 폴더명 변경시 vcxproj 파일이 업데이트가 안되어서 문제 발생 가능 -> 새 프로젝트 만들어서 옮기기
-이전 select모델 프로젝트 코드들(rpc, 컨텐츠 코드, 유틸 등) 추가
-
-세션 종료시 postSend()에서 접근 못하게 ioCount 확인하는 코드 추가
 
 발생 가능한 이슈
-1. postSend() 내부에서 sendQueue 읽기에 락 필요? 다른스레드에서 sendQueue에 쓰기가 상황이 영향을 끼칠지??
+1. SendPost() 내부에서 sendQueue 읽기에 락 필요? 다른스레드에서 sendQueue에 쓰기가 상황이 영향을 끼칠지??
 2. 여러 스레드에서 세션맵 건들시 문제 발생 가능(세션 생성 삭제시 여러 스레드에서 접근 가능) -> 동기화 필요
 3. sendPacket()은 동기화 필요. 다른 스레드에서 enqueue 가능 (게임서버니까)
 ```
@@ -281,219 +108,56 @@ closesocket 이후, 같은 소켓이 생성되어도, 어차피 sendPacket()은 
 ```text
 Logger에 날짜, 스레드, 로그타입 추가 (spdlog 참고)
 
-server 예외처리 추가 + PQCS 적용
 스레드 생성하자마자 핸들 닫으면 핸들 무효화됨 주의
 커널 오브젝트의 reference count와 signal 상태는 별개의 개념임
-GQCS 반환시 numOfBytes 체크 필요 x (어차피 에러 확인 코드 있으니깐)
 
 windows.h -> 반드시 winsock 밑에!! 헤더 include 하면서 순서 꼬일수 있음 주의
-#define WIN32_LEAN_AND_MEAN 추가도 가능 but windows.h의 헤더들이 많이 날라감..
 ```
 
 ### 26-06-08
 ```text
-select 모델 삭제 (레포지토리 분리)
-
-WSARecv()시 등록과 완료시 ioCount 증감 적용
-ref count는 한 작업이 종료될때까지 들고 있다가 완료되면 감소. 0이 되면 삭제.
-postSend()는 WSASend() 호출 전에 iocount 늘려야
+SendPost()는 WSASend() 호출 전에 iocount 늘려야
 다른 스레드에서 send 완료통지로 ioCount 내려서 0이 되는 상황 방지
-```
-
-### 26-06-09
-```text
-Server 클래스의 소멸자 로직의 로그 출력이 안되는 상황 발생 (싱글톤으로 인한 소멸 순서 미보장)
-->selectserver의 소멸자 로직을 별도의 종료함수로 분리
-
-더미테스트
-클라 1 / 오버센드 1 / 연결종료 x / 딜레이 0 / TPS 약 20000
-어느 시점 갑자기 TPS 0으로 떨어짐. 서버에선 세션 삭제 문구 뜨지 않음
-워커스레드 종료는 없음 확인
-클라 서버 둘다 소켓 삭제 안되었는데 데이터 전송은 없음
-wsasend() error  10022 WSAEINVAL 이 에러가 발생하는걸로 보아 overlapped 객체가 사용중인데
-덮어씌워지는 상황인거 같긴한데, 이 에러가 항상 출력되는건 아님.. 이유가??
-
-sendQueue에 동시에 enqueue하는 상황이 문제 -> 세션 멤버변수에 Lock 추가
-세션의 모든 멤버변수에 대한 접근에 락 적용
-```
-
-### 26-06-10
-```text
-sendQueue에 enqueue할때 락을 적용 안하면 wsasend() 10022 에러 발생
-sendQueue 내부적으로 락을 적용한다고 해도, 결국 enqueue 호출부분이 2번이라서 문제가 발생 가능함... 이걸 어케 해결함?
 ```
 
 ### 26-06-11
 ```text
-세션맵 잠금 없을때 더미에서 재연결 옵션시 read access violation 발생
 상대가 closesocket()시 (rst x) GQCS 성공 반환 후 numOfBytes 0 전달됨 -> 예외처리
-
-로그 전부 주석처리. 출력시간으로 인하여 동기화 문제가 안타나남
-
-더미 클라 1로 테스트
-lock을 포인터로 분리했음에도 recv /send 에서 10053 에러 발생중임...
-락을 릴리즈 한 후 재사용해서 발생하는 문제임
-```
-
-### 26-06-12
-```text
-Server, SessionManager 클래스 -> LanServer 클래스 전면수정
-LanServer 클래스는 상속이 필요하므로 싱글턴 제거
-
-링버퍼에 락 추가
-
-Fighter Server IOCP로 재설계중...
-```
-
-### 26-06-13
-```text
-config 파일 및 클래스 수정 (전역변수 방식으로 변경)
-
-링버퍼의 useSize() 메서드에서 동기화 문제로 음수가 반환되는 문제 발생
-쓰기 위치 / 읽기 위치를 메서드 진입시 스택으로 빼고 진행
-
-FighterServer 수정 완료 (LanServer 인터페이스에 맞게)
-RPC 코드에서 패킷 타입 관리하도록 수정
-```
-
-### 26-06-15
-```text
-Session 클래스 삭제, 구조체로 변경, 메서드는 LanServer 클래스로 편입
-LanServer의 변수를 기존 클래스의 내의 전역변수에서 
-메인함수의 스택에서 선언하도록 위치 변경
-사용자측의 라이브러리 사용 복잡성 해소를 위함
-
-RPC에서 Server 인스턴스 접근 방법 고민중...
-
-Session* LanServer::findSession(__int64 sessionId)
-{
-	sessionMapLock_.lock();
-
-	auto it = sessionMap_.find(sessionId);
-	auto end = sessionMap_.end();
-
-	sessionMapLock_.unlock();
-
-	if (it != end)
-	{
-		return (*it).second;
-	}
-	else
-		return nullptr;
-}
-
-위 코드 삭제
-세션맵락 언락 후 세션이 삭제될 가능성 존재
-
-RPC Proxy Stub 클래스는 기존의 싱글턴 방식에서, 
-LanServer를 상속받는 클래스에서 하나씩 포함하도록 수정
 ```
 
 ### 26-06-16
 ```
-프로파일러 단축키 제대로 입력이 씹힘 -> 여러 스레드에서 getch() 호출해서 생긴 문제
+프로파일러 단축키 입력이 씹힘 -> 여러 스레드에서 getch() 호출해서 생긴 문제
 -> 키보드 입력은 메인스레드에서만 가능토록 수정
-```
-
-### 26-06-17
-```
-컨텐츠 서버 내부에서 모든 컨텐츠 관리(PlayerManager, 로직스레드)
-
-가상함수 defaultStart(), defaultStop() 추가 (컨텐츠 서버 구현사항)
-
-RPC 코드 서버/클라이언트(미구현)으로 분리
-컨텐츠서버 인스턴스당 proxy는 멤버변수로, stub은 상속받도록 수정
-
-onaccept() 와 postRecv() 순서의 문제?...
-(완료통지가 안오는 문제현상 발생했었음.)
 ```
 
 ### 26-06-19
 ```
 send 링버퍼를 Packet 포인터 저장하게 변경 -> 복사 생략 효과
 
-WSASend() 호출시 wsabuf count 0인 상황 발생시 10022 에러 발생함. 예외처리
+WSASend() 호출시 wsabuf count 0인 상황 발생시 10022 에러 발생
 
 링버퍼 enqueue시 프리사이즈 0으로 뜨는 상황...?
--> for문 탈출조건에 어떤 메서드 넣지 말고 스택변수로 넣기 & 원형큐 크기 충분히 늘리기
-
-Packet 클래스 buffer_ 앞쪽은 헤더가 사용하게끔 전체 수정
--> 즉 wsasend() 호출시, Packet 인스턴스의 전체 버퍼 전달하도록 함
-cf. 이전의 다른 방식
-1. 헤더도 Packet 인스턴스 생성 -> 생성해제 비용 and Packet 인스턴스라기엔 모호
-2. 패킷 클래스 안에 헤더 멤버변수 추가 -> wsabuf에 헤더와 패킷 따로 등록해야 해서 비용 증가
-```
-
-### 26-08-01
-```
-재귀락 
-
-세션맵 락 - 세션 락으로 인한 데드락 수정
-세션맵 언락을 중간이 아닌 함수 마지막으로 보냄
-sendQ를 처리하는 과정에서는 session접근시 모두 세션맵락 -> 세션락 순서 적용
-
-모니터링 추가 (TPS)
-
-메서드 네이밍 컨벤션 교체 (파스칼 케이스)
+-> for문 탈출조건에 어떤 메서드 넣지 말고 스택변수로 넣기 & 링버퍼 크기 충분히 늘리기
 ```
 
 ### 26-08-05
 ```
 send시 복사 생략 로직 수정
-
-Packet 클래스 수정
-
-프로파일러 멀티스레드용 추가
-```
-
-### 26-08-16
-```
-LanClient 작성 (단일 세션 기반)
-TestClient 추가
-
-소켓 에러 함수 LanServer로 이동
-```
-
-### 26-08-17
-```
-Packet 수정 (SPacket RPacket Message 클래스 삭제)
-Packet 클래스는 이제 기본적으로 헤더와 세션 id를 포함하고 있음
-
-Session 생성시 ioCount 1로 시작.
-IncrementIoCount() 수정 -> count 0에서는 증가하지 못하도록
-여러 스레드에서 접근시, ReleaseSession()이 여러번 호출되는 문제 발생했었음
 ```
 
 ### 26-08-18
 ```
-Rpc 코드 전면 수정 및 배치파일과 idl 파일 경로 수정
-Rpc 클라이언트용 코드 추가 (sessionId를 고려하지 않기 떄문)
-string, list 타입 추가
-Rpc코드를 헤더파일로만 작동하도록 수정했다가 롤백 (RpcModule 코드를 사용할수 없게되어서 불가능함)
-Rpc 인자는 레퍼런스 적용 가능하게 수정
-
-stub 코드와 handler 코드 재분리
-```
-
-### 26-08-20
-```
-DB 구조 추가
-users, players 테이블 추가
-```
-
-### 26-08-27
-```
-클라이언트 추가
+Rpc코드를 헤더파일로만 작동하도록 수정했다가 롤백 (RpcModule 코드를 사용할수 없게 되어서 불가능함)
+Rpc 인자 레퍼런스 적용 가능
 ```
 
 ### 26-08-29
 ```
-db 정의파일 및 자동생성 코드 분리
-dbconfig 분리 및 string으로 변경
+db 정의파일 및 자동생성 코드
 ```
 
-### 26-08-31
+### 26-10-30
 ```
-playermanager 분리
-Rpc stub 수정 및 proxy 전역 객체로 변경
+락프리 노드풀 전역으로 변경
 ```

@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="DbFormat.cs" />
+    <Compile Remove="DbGenerator.cs" />
+    <Compile Remove="RpcClientFormat.cs" />
+    <Compile Remove="RpcClientGenerator.cs" />
+  </ItemGroup>
+
 </Project>
