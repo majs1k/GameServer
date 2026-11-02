@@ -10,6 +10,18 @@
 #include "../Utils/Profiler.h"
 #include <Windows.h>
 
+
+NetServer::Session::Session()
+{
+	recvPacket_ = packetPool_.Alloc();
+}
+
+NetServer::Session::~Session()
+{
+	packetPool_.Free(recvPacket_);
+}
+
+
 void NetServer::Session::Initialize(SOCKET socket, std::string ip, int port, uint64_t id)
 {
 	socket_ = socket;
@@ -22,8 +34,7 @@ void NetServer::Session::Initialize(SOCKET socket, std::string ip, int port, uin
 	sendPostQueue_.Clear();
 
 	//recvQueue_.Clear();
-	recvPacket_ = packetPool_.Alloc();
-	recvPacket_->InitRecvPacket(sizeof(LAN_HEADER));
+	recvPacket_->InitRecvPacket(sizeof(NET_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
 	recvOverlapped_.type = IO_TYPE::RECV;
@@ -53,14 +64,13 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	sessionMax_ = sessionMax;
 	//sessionMap_.reserve(sessionMax_);
 
-	for (int i = 0; i < 200; i++)
+	for (int i = 0; i < sessionMax_; i++)
 	{
 		sessions[i] = new Session();
 	}
 
-	for (int i = 0; i < 200; i++)
+	for (int i = 0; i < sessionMax_; i++)
 	{
-		//sessionIndex_.push(200 - i - 1);
 		sessionIndex_.Push(sessionMax_ - i - 1);
 	}
 
@@ -168,16 +178,6 @@ void NetServer::Stop()
 	LOG_INFO(L"[NETWORK] server exit");
 }
 
-int NetServer::SessionCount() const
-{
-	return sessionCount_;
-}
-
-int NetServer::SessionMax() const
-{
-	return sessionMax_;
-}
-
 bool NetServer::Disconnect(uint64_t sessionId)
 {
 	Session* session = sessions[GetSessionIndex(sessionId)];
@@ -209,8 +209,13 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		return false;
 	}
 
-	///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
-	packet->SetLanHeader();
+
+	if (!packet->IsEncoding()) 
+	{
+		packet->SetNetHeader();
+
+		packet->Encoding();
+	}
 
 	/// char* 링버퍼 용도
 	//session->sendQueue_.Enqueue(packet->GetBufferPtr(), packet->TotalUseSize());
@@ -219,7 +224,6 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	/// Packet* 링버퍼 용도
 	session->sendQueue_.Enqueue(packet);
 
-	// TODO: 값 수정
 	if (session->sendQueue_.Size() > 2000)
 	{
 		Disconnect(sessionId);
@@ -262,6 +266,7 @@ unsigned int __stdcall NetServer::AcceptThread(void* param)
 		}
 
 		InterlockedIncrement(&server->acceptCount_);
+		server->acceptCountTotal_++;
 
 		CHAR str[16];
 		InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
@@ -328,7 +333,7 @@ unsigned int __stdcall NetServer::WorkerThread(void* param)
 			// 완료 패킷을 꺼내서, 실패한 IO에 대한 정보를 매개변수에 저장함
 			if (overlapped != nullptr)
 			{
-				// 64 상대가 연결을 끊었을때 (numOfBytes == 0)
+				// 64 상대가 연결을 끊었을때
 				// 1236 clientSock 닫았을때
 				if (error == ERROR_NETNAME_DELETED || error == ERROR_CONNECTION_ABORTED)
 				{
@@ -410,15 +415,16 @@ void NetServer::Monitoring()
 	LONG recvMessageTps = InterlockedExchange(&recvMessageCount_, 0);
 	LONG sendMessageTps = InterlockedExchange(&sendMessageCount_, 0);
 
-	system("cls");
+	//system("cls");
 
 	printf("=====================\n");
 	printf(" SERVER  MONITORING\n");
 	printf("=====================\n\n");
 
 	printf("Acpt TPS : %d\n", acceptTps);
+	printf("Acpt Total : %d\n", acceptCountTotal_);
 	printf("Recv TPS : %d\n", recvMessageTps);
-	printf("Send TPS : %d\n", sendMessageTps);
+	printf("Send TPS : %d\n\n", sendMessageTps);
 }
 
 // ===================================================================

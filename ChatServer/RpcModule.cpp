@@ -63,23 +63,6 @@ inline Packet& operator>>(Packet& packet, std::vector<T>& vec)
 	return packet;
 }
 
-//inline Packet& operator<<(Packet& packet, PLAYER_STATE state)
-//{
-//	packet << static_cast<short>(state);
-//
-//	return packet;
-//}
-//
-//inline Packet& operator>>(Packet& packet, PLAYER_STATE& state)
-//{
-//	short s;
-//	packet >> s;
-//
-//	state = static_cast<PLAYER_STATE>(s);
-//
-//	return packet;
-//}
-
 inline Packet& operator<<(Packet& packet, LoginId& loginId)
 {
 	packet.Write(reinterpret_cast<char*>(loginId.loginId_), sizeof(LoginId));
@@ -122,19 +105,18 @@ inline Packet& operator>>(Packet& packet, SessionKey& sessionKey)
 	return packet;
 }
 
-inline Packet& operator<<(Packet& packet, Chat& message_)
+inline Packet& operator<<(Packet& packet, Chat& chat)
 {
-	packet << message_.len_;
-	packet.Write(reinterpret_cast<char*>(message_.message_), message_.len_);
+	packet << chat.len_;
+	packet.Write(reinterpret_cast<char*>(chat.chat_), chat.len_);
 
 	return packet;
 }
 
-inline Packet& operator>>(Packet& packet, Chat& message_)
+inline Packet& operator>>(Packet& packet, Chat& chat)
 {
-	packet >> message_.len_;
-	packet.Read(reinterpret_cast<char*>(message_.message_), message_.len_);
-
+	packet >> chat.len_;
+	packet.Read(reinterpret_cast<char*>(chat.chat_), chat.len_);
 
 	return packet;
 }

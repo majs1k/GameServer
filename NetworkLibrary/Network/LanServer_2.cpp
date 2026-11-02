@@ -62,6 +62,8 @@
 //
 //void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //{
+//	PRO(L"CompleteRecv");
+//
 //	session->recvQueue_.MoveRear(numOfBytes);
 //
 //	if (session->recvQueue_.IsFull())
@@ -95,6 +97,7 @@
 //
 //		//Packet* packet = new Packet();
 //		Packet* packet = packetPool_.Alloc();
+//		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
 //		packet->Initialize(2, 1);
 //
 //		// 헤더 + 바디 전부 디큐
@@ -106,6 +109,8 @@
 //		InterlockedIncrement(&recvMessageCount_);
 //
 //		this->OnRecv(session->sessionId_, packet);
+//
+//		packet->Free();
 //	}
 //
 //	// WSARecv() 이전에 호출
@@ -161,6 +166,8 @@ void LanServer::RecvPost(Session* session)
 
 void LanServer::CompleteRecv(Session* session, int numOfBytes)
 {
+	PRO(L"CompleteRecv");
+
 	if (numOfBytes >= PACKET_CAPACITY)
 	{
 		LOG_INFO(L"recvQueue full");
@@ -170,68 +177,82 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 		return;
 	}
 
-	session->recvPacket_->AddRef();
+	int useSize = session->recvPacket_->UseSize();
 
-	int recvBytes =0;
-	int remainBytes = numOfBytes;
+	int processedBytes = 0;
+	int totalBytes = numOfBytes + useSize;
+	int remainBytes = totalBytes;
 
-	Packet* rawPacket = session->recvPacket_;
-	Packet* newPacket = rawPacket;
+	session->recvPacket_->MoveWritePos(-useSize);
+
+	bool completeFirstLoop = false;
 
 	while (1)
 	{
 		if (remainBytes < sizeof(LAN_HEADER))
 		{
-			session->recvPacket_->MoveWritePos(numOfBytes);
-
 			break;
 		}
-		
-		int bodySize = reinterpret_cast<LAN_HEADER*>(rawPacket->GetHeaderPtr() + recvBytes)->size_;
+
+		int bodySize = reinterpret_cast<LAN_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
 
 		if (bodySize < 0)
 		{
-			if(newPacket != rawPacket)
-				newPacket->Free();
-
 			LOG_INFO(L"recv size error");
 
-			ReleaseSession(session);
+			Disconnect(session->sessionId_);
 
 			return;
 		}
 
 		if (remainBytes < sizeof(LAN_HEADER) + bodySize)
 		{
-			session->recvPacket_->MoveWritePos(numOfBytes);
-
 			break;
 		}
 
-		if (newPacket != rawPacket)
+		if (!completeFirstLoop)
 		{
-			newPacket->Write(rawPacket->GetHeaderPtr() + recvBytes, sizeof(LAN_HEADER) + bodySize);
+			session->recvPacket_->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
+			session->recvPacket_->MoveReadPos(sizeof(LAN_HEADER) );
+
+			processedBytes += (sizeof(LAN_HEADER) + bodySize);
+			remainBytes = totalBytes - processedBytes;
+
+			InterlockedIncrement(&recvMessageCount_);
+
+			OnRecv(session->sessionId_, session->recvPacket_);
+
+			completeFirstLoop = true;
 		}
+		else
+		{
+			Packet* packet = packetPool_.Alloc();
+			packet->InitRecvPacket(sizeof(LAN_HEADER));
 
-		session->recvPacket_->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
+			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(LAN_HEADER) + bodySize);
 
+			packet->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
+			packet->MoveReadPos(sizeof(LAN_HEADER) );
 
-		recvBytes += (sizeof(LAN_HEADER) + bodySize);
-		remainBytes = numOfBytes - recvBytes;
+			processedBytes += (sizeof(LAN_HEADER) + bodySize);
+			remainBytes = totalBytes - processedBytes;
 
+			InterlockedIncrement(&recvMessageCount_);
 
-		InterlockedIncrement(&recvMessageCount_);
+			OnRecv(session->sessionId_, packet);
 
-		OnRecv(session->sessionId_, newPacket);
-
-
-		newPacket = packetPool_.Alloc();
-		newPacket->InitRecvPacket(sizeof(LAN_HEADER));
+			packet->Free();
+		}
 	}
+
+	Packet* newPacket = packetPool_.Alloc();
+	newPacket->InitRecvPacket(sizeof(LAN_HEADER));
+
+	if (remainBytes > 0)
+		newPacket->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, remainBytes);
 
 	session->recvPacket_->Free();
 	session->recvPacket_ = newPacket;
-
 
 	// WSARecv() 이전에 호출
 	InterlockedIncrement(&session->ioCount_);
@@ -312,9 +333,14 @@ void LanServer::SendPost(Session* session)
 
 void LanServer::CompleteSend(Session* session, int numOfBytes)
 {
-	while (!session->sendPostQueue_.IsEmpty())
+	while (1)
 	{
-		Packet* p = session->sendPostQueue_.Dequeue();
+		Packet* p;
+		
+		bool ret = session->sendPostQueue_.Dequeue(p);
+
+		if (ret == false)
+			break;
 
 		//delete p;
 		p->Free();
@@ -339,7 +365,6 @@ void LanServer::ReleaseSession(Session* session)
 			return;
 
 		closesocket(session->socket_);
-		packetPool_.Free(session->recvPacket_);
 
 		int index = GetSessionIndex(session->sessionId_);
 

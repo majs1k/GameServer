@@ -18,7 +18,7 @@ TestServer::~TestServer()
 
 bool TestServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (SessionCount() >= SessionMax())
+	if (sessionCount_ >= sessionMax_)
 	{
 		LOG(L"[Network] session limit over");
 
@@ -54,22 +54,12 @@ void TestServer::OnRecv(uint64_t sessionId, Packet* packet)
 	//
 	//if (packet->IsError())
 	//{
-	//	packet->Free();
-	//
 	//	Disconnect(sessionId);
 	//	return;
 	//}
 	//
-	////delete packet;
-	////packetPool_.Free(packet);
-	//packet->Free();
-	//
-	//PRO_BEGIN(L"new");
-	//
 	////Packet* packet2 = new Packet();
 	//Packet* packet2 = packetPool_.Alloc();
-	//
-	//PRO_END(L"new");
 	//
 	//packet2->Initialize(2, 1);
 	//
@@ -77,8 +67,8 @@ void TestServer::OnRecv(uint64_t sessionId, Packet* packet)
 	//
 	//this->SendPacket(sessionId, packet2);
 
-
 	/// 로직 스레드에서 패킷 처리
+	packet->AddRef();
 	logicThreadMQ_.Enqueue({ sessionId, packet });
 }
 
@@ -102,7 +92,7 @@ void TestServer::PacketProc()
 		bool ret = logicThreadMQ_.Dequeue(message);
 
 		if (ret == false)
-			return;
+			break;
 
 		auto [sessionId, packet] = message;
 
@@ -111,14 +101,13 @@ void TestServer::PacketProc()
 
 		if (packet->IsError())
 		{
-			packetPool_.Free(packet);
+			packet->Free();
 
 			Disconnect(sessionId);
-			return;
+			
+			continue;
 		}
 
-		//delete packet;
-		//packetPool_.Free(packet);
 		packet->Free();
 
 		Packet* packet2 = packetPool_.Alloc();

@@ -141,7 +141,7 @@
     <ClInclude Include="Utils\MemoryPoolTls.h" />
     <ClInclude Include="Utils\Monitoring.h" />
     <ClInclude Include="Utils\Packet.h" />
-    <ClInclude Include="Utils\MessageQueue.h" />
+    <ClInclude Include="Utils\LockQueue.h" />
     <ClInclude Include="Utils\Profiler.h" />
     <ClInclude Include="Utils\Random.h" />
     <ClInclude Include="Utils\rapidjson\allocators.h" />

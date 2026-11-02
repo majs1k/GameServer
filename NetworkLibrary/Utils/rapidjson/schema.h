@@ -153,10 +153,10 @@ inline void PrintMethodData(const char* method, const wchar_t* s1, const wchar_t
 ///////////////////////////////////////////////////////////////////////////////
 // RAPIDJSON_INVALID_KEYWORD_RETURN
 
-#define RAPIDJSON_INVALID_KEYWORD_RETURN(code)\
+#define RAPIDJSON_INVALID_KEYWORD_RETURN(NET_CODE)\
 RAPIDJSON_MULTILINEMACRO_BEGIN\
-    context.invalidCode = code;\
-    context.invalidKeyword = SchemaType::GetValidateErrorKeyword(code).GetString();\
+    context.invalidCode = NET_CODE;\
+    context.invalidKeyword = SchemaType::GetValidateErrorKeyword(NET_CODE).GetString();\
     RAPIDJSON_SCHEMA_PRINT(InvalidKeyword, context.invalidKeyword);\
     return false;\
 RAPIDJSON_MULTILINEMACRO_END
@@ -308,7 +308,7 @@ public:
     virtual void AddDependencySchemaError(const SValue& souceName, ISchemaValidator* subvalidator) = 0;
     virtual bool EndDependencyErrors() = 0;
 
-    virtual void DisallowedValue(const ValidateErrorCode code) = 0;
+    virtual void DisallowedValue(const ValidateErrorCode NET_CODE) = 0;
     virtual void StartDisallowedType() = 0;
     virtual void AddExpectedType(const typename SchemaType::ValueType& expectedType) = 0;
     virtual void EndDisallowedType(const typename SchemaType::ValueType& actualType) = 0;
@@ -1978,24 +1978,24 @@ public:
     }
 
     //! Default error method
-    void SchemaError(const SchemaErrorCode code, const PointerType& location) {
+    void SchemaError(const SchemaErrorCode NET_CODE, const PointerType& location) {
       currentError_ = GValue(kObjectType);
-      AddCurrentError(code, location);
+      AddCurrentError(NET_CODE, location);
     }
 
     //! Method for error with single string value insert
-    void SchemaErrorValue(const SchemaErrorCode code, const PointerType& location, const Ch* value, SizeType length) {
+    void SchemaErrorValue(const SchemaErrorCode NET_CODE, const PointerType& location, const Ch* value, SizeType length) {
       currentError_ = GValue(kObjectType);
       currentError_.AddMember(GetValueString(), GValue(value, length, *allocator_).Move(), *allocator_);
-      AddCurrentError(code, location);
+      AddCurrentError(NET_CODE, location);
     }
 
     //! Method for error with invalid pointer
-    void SchemaErrorPointer(const SchemaErrorCode code, const PointerType& location, const Ch* value, SizeType length, const PointerType& pointer) {
+    void SchemaErrorPointer(const SchemaErrorCode NET_CODE, const PointerType& location, const Ch* value, SizeType length, const PointerType& pointer) {
       currentError_ = GValue(kObjectType);
       currentError_.AddMember(GetValueString(), GValue(value, length, *allocator_).Move(), *allocator_);
       currentError_.AddMember(GetOffsetString(), static_cast<SizeType>(pointer.GetParseErrorOffset() / sizeof(Ch)), *allocator_);
-      AddCurrentError(code, location);
+      AddCurrentError(NET_CODE, location);
     }
 
   private:
@@ -2040,11 +2040,11 @@ public:
       }
     }
 
-    void AddCurrentError(const SchemaErrorCode code, const PointerType& location) {
-      RAPIDJSON_SCHEMA_PRINT(InvalidKeyword, GetSchemaErrorKeyword(code));
-      currentError_.AddMember(GetErrorCodeString(), code, *allocator_);
+    void AddCurrentError(const SchemaErrorCode NET_CODE, const PointerType& location) {
+      RAPIDJSON_SCHEMA_PRINT(InvalidKeyword, GetSchemaErrorKeyword(NET_CODE));
+      currentError_.AddMember(GetErrorCodeString(), NET_CODE, *allocator_);
       AddErrorInstanceLocation(currentError_, location);
-      AddError(GValue(GetSchemaErrorKeyword(code)).Move(), currentError_);
+      AddError(GValue(GetSchemaErrorKeyword(NET_CODE)).Move(), currentError_);
     }
 
 #define RAPIDJSON_STRING_(name, ...) \
@@ -2698,15 +2698,15 @@ public:
         if (!missingDependents_.Empty()) {
             // Create equivalent 'required' error
             ValueType error(kObjectType);
-            ValidateErrorCode code = kValidateErrorRequired;
+            ValidateErrorCode NET_CODE = kValidateErrorRequired;
             error.AddMember(GetMissingString(), missingDependents_.Move(), GetStateAllocator());
-            AddErrorCode(error, code);
+            AddErrorCode(error, NET_CODE);
             AddErrorInstanceLocation(error, false);
             // When appending to a pointer ensure its allocator is used
             PointerType schemaRef = GetInvalidSchemaPointer().Append(SchemaType::GetValidateErrorKeyword(kValidateErrorDependencies), &GetInvalidSchemaPointer().GetAllocator());
             AddErrorSchemaLocation(error, schemaRef.Append(sourceName.GetString(), sourceName.GetStringLength(), &GetInvalidSchemaPointer().GetAllocator()));
             ValueType wrapper(kObjectType);
-            wrapper.AddMember(ValueType(SchemaType::GetValidateErrorKeyword(code), GetStateAllocator()).Move(), error, GetStateAllocator());
+            wrapper.AddMember(ValueType(SchemaType::GetValidateErrorKeyword(NET_CODE), GetStateAllocator()).Move(), error, GetStateAllocator());
             currentError_.AddMember(ValueType(sourceName, GetStateAllocator()).Move(), wrapper, GetStateAllocator());
         }
     }
@@ -2724,9 +2724,9 @@ public:
         return true;
     }
 
-    void DisallowedValue(const ValidateErrorCode code = kValidateErrorEnum) {
+    void DisallowedValue(const ValidateErrorCode NET_CODE = kValidateErrorEnum) {
         currentError_.SetObject();
-        AddCurrentError(code);
+        AddCurrentError(NET_CODE);
     }
     void StartDisallowedType() {
         currentError_.SetArray();
@@ -3103,8 +3103,8 @@ private:
         result.AddMember(GetSchemaRefString(), schemaRef, GetStateAllocator());
     }
 
-    void AddErrorCode(ValueType& result, const ValidateErrorCode code) {
-        result.AddMember(GetErrorCodeString(), code, GetStateAllocator());
+    void AddErrorCode(ValueType& result, const ValidateErrorCode NET_CODE) {
+        result.AddMember(GetErrorCodeString(), NET_CODE, GetStateAllocator());
     }
 
     void AddError(ValueType& keyword, ValueType& error) {
@@ -3121,11 +3121,11 @@ private:
         }
     }
 
-    void AddCurrentError(const ValidateErrorCode code, bool parent = false) {
-        AddErrorCode(currentError_, code);
+    void AddCurrentError(const ValidateErrorCode NET_CODE, bool parent = false) {
+        AddErrorCode(currentError_, NET_CODE);
         AddErrorInstanceLocation(currentError_, parent);
         AddErrorSchemaLocation(currentError_);
-        AddError(ValueType(SchemaType::GetValidateErrorKeyword(code), GetStateAllocator(), false).Move(), currentError_);
+        AddError(ValueType(SchemaType::GetValidateErrorKeyword(NET_CODE), GetStateAllocator(), false).Move(), currentError_);
     }
 
     void MergeError(ValueType& other) {
@@ -3134,24 +3134,24 @@ private:
         }
     }
 
-    void AddNumberError(const ValidateErrorCode code, ValueType& actual, const SValue& expected,
+    void AddNumberError(const ValidateErrorCode NET_CODE, ValueType& actual, const SValue& expected,
         const typename SchemaType::ValueType& (*exclusive)() = 0) {
         currentError_.SetObject();
         currentError_.AddMember(GetActualString(), actual, GetStateAllocator());
         currentError_.AddMember(GetExpectedString(), ValueType(expected, GetStateAllocator()).Move(), GetStateAllocator());
         if (exclusive)
             currentError_.AddMember(ValueType(exclusive(), GetStateAllocator()).Move(), true, GetStateAllocator());
-        AddCurrentError(code);
+        AddCurrentError(NET_CODE);
     }
 
-    void AddErrorArray(const ValidateErrorCode code,
+    void AddErrorArray(const ValidateErrorCode NET_CODE,
         ISchemaValidator** subvalidators, SizeType count) {
         ValueType errors(kArrayType);
         for (SizeType i = 0; i < count; ++i)
             errors.PushBack(static_cast<GenericSchemaValidator*>(subvalidators[i])->GetError(), GetStateAllocator());
         currentError_.SetObject();
         currentError_.AddMember(GetErrorsString(), errors, GetStateAllocator());
-        AddCurrentError(code);
+        AddCurrentError(NET_CODE);
     }
 
     const SchemaType& CurrentSchema() const { return *schemaStack_.template Top<Context>()->schema; }

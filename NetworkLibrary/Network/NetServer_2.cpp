@@ -62,6 +62,8 @@
 //
 //void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //{
+//	//PRO(L"CompleteRecv");
+//
 //	session->recvQueue_.MoveRear(numOfBytes);
 //
 //	if (session->recvQueue_.IsFull())
@@ -78,7 +80,7 @@
 //		int useSize = session->recvQueue_.UseSize();
 //
 //		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
-//		LAN_HEADER header;
+//		NET_HEADER header;
 //
 //		if (useSize < sizeof(header))
 //			break;
@@ -95,7 +97,8 @@
 //
 //		//Packet* packet = new Packet();
 //		Packet* packet = packetPool_.Alloc();
-//		packet->Initialize(2, 1);
+//		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
+//		packet->Initialize(5, 1);
 //
 //		// 헤더 + 바디 전부 디큐
 //		session->recvQueue_.Dequeue(packet->GetHeaderPtr(), sizeof(header) + bodySize);
@@ -103,9 +106,23 @@
 //		// 메세지 사이즈만큼만 무브
 //		packet->MoveWritePos(bodySize);
 //
+//		/// 디코딩
+//		packet->Decoding();
+//
+//		if (!packet->IsValidChecksum())
+//		{
+//			LOG_INFO(L"recv checksum error");
+//
+//			Disconnect(session->sessionId_);
+//
+//			return;
+//		}
+//
 //		InterlockedIncrement(&recvMessageCount_);
 //
 //		this->OnRecv(session->sessionId_, packet);
+//
+//		packet->Free();
 //	}
 //
 //	// WSARecv() 이전에 호출
@@ -161,6 +178,8 @@ void NetServer::RecvPost(Session* session)
 
 void NetServer::CompleteRecv(Session* session, int numOfBytes)
 {
+	//PRO(L"CompleteRecv");
+
 	if (numOfBytes >= PACKET_CAPACITY)
 	{
 		LOG_INFO(L"recvQueue full");
@@ -170,68 +189,122 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		return;
 	}
 
-	session->recvPacket_->AddRef();
+	int useSize = session->recvPacket_->UseSize();
 
-	int recvBytes = 0;
-	int remainBytes = numOfBytes;
+	int processedBytes = 0;
+	int totalBytes = numOfBytes + useSize;
+	int remainBytes = totalBytes;
 
-	Packet* rawPacket = session->recvPacket_;
-	Packet* newPacket = rawPacket;
+	session->recvPacket_->MoveWritePos(-useSize);
+
+	bool completeFirstLoop = false;
 
 	while (1)
 	{
-		if (remainBytes < sizeof(LAN_HEADER))
+		if (remainBytes < sizeof(NET_HEADER))
 		{
-			session->recvPacket_->MoveWritePos(numOfBytes);
-
 			break;
 		}
 
-		int bodySize = reinterpret_cast<LAN_HEADER*>(rawPacket->GetHeaderPtr() + recvBytes)->size_;
+		/// 코드 확인
+		unsigned char code = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->code_;
 
-		if (bodySize < 0)
+		if (code != NET_CODE)
 		{
-			if (newPacket != rawPacket)
-				newPacket->Free();
+			LOG_INFO(L"recv code error");
 
-			LOG_INFO(L"recv size error");
-
-			ReleaseSession(session);
+			Disconnect(session->sessionId_);
 
 			return;
 		}
 
-		if (remainBytes < sizeof(LAN_HEADER) + bodySize)
-		{
-			session->recvPacket_->MoveWritePos(numOfBytes);
+		int bodySize = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
 
+		if (bodySize < 0)
+		{
+			LOG_INFO(L"recv size error");
+
+			Disconnect(session->sessionId_);
+
+			return;
+		}
+
+		if (remainBytes < sizeof(NET_HEADER) + bodySize)
+		{
 			break;
 		}
 
-		if (newPacket != rawPacket)
+		if (!completeFirstLoop)
 		{
-			newPacket->Write(rawPacket->GetHeaderPtr() + recvBytes, sizeof(LAN_HEADER) + bodySize);
+			session->recvPacket_->MoveWritePos(sizeof(NET_HEADER) + bodySize);
+			session->recvPacket_->MoveReadPos(sizeof(NET_HEADER));
+
+			/// 디코딩
+			session->recvPacket_->Decoding();
+
+			if (!session->recvPacket_->IsValidChecksum())
+			{
+				LOG_INFO(L"recv checksum error");
+
+				Disconnect(session->sessionId_);
+
+				return;
+			}
+
+			processedBytes += (sizeof(NET_HEADER) + bodySize);
+			remainBytes = totalBytes - processedBytes;
+
+			InterlockedIncrement(&recvMessageCount_);
+
+			OnRecv(session->sessionId_, session->recvPacket_);
+
+			completeFirstLoop = true;
 		}
+		else
+		{
+			Packet* packet = packetPool_.Alloc();
+			packet->InitRecvPacket(sizeof(NET_HEADER));
 
-		session->recvPacket_->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
+			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(NET_HEADER) + bodySize);
 
+			packet->MoveWritePos(sizeof(NET_HEADER) + bodySize);
+			packet->MoveReadPos(sizeof(NET_HEADER));
 
-		recvBytes += (sizeof(LAN_HEADER) + bodySize);
-		remainBytes = numOfBytes - recvBytes;
+			/// 디코딩
+			packet->Decoding();
 
+			if (!packet->IsValidChecksum())
+			{
+				LOG_INFO(L"recv checksum error");
 
-		InterlockedIncrement(&recvMessageCount_);
+				packet->Free();
 
-		OnRecv(session->sessionId_, newPacket);
+				Disconnect(session->sessionId_);
 
+				return;
+			}
 
-		newPacket = packetPool_.Alloc();
-		newPacket->InitRecvPacket(sizeof(LAN_HEADER));
+			processedBytes += (sizeof(NET_HEADER) + bodySize);
+			remainBytes = totalBytes - processedBytes;
+
+			InterlockedIncrement(&recvMessageCount_);
+
+			OnRecv(session->sessionId_, packet);
+
+			packet->Free();
+		}
+	}
+
+	Packet* newPacket = packetPool_.Alloc();
+	newPacket->InitRecvPacket(sizeof(NET_HEADER));
+
+	if (remainBytes > 0)
+	{
+		newPacket->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, remainBytes);
 	}
 
 	session->recvPacket_->Free();
 	session->recvPacket_ = newPacket;
-
 
 	// WSARecv() 이전에 호출
 	InterlockedIncrement(&session->ioCount_);
@@ -240,6 +313,8 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 	ReleaseSession(session);
 }
+
+
 
 
 #define MAX_WSABUF 100
@@ -312,9 +387,14 @@ void NetServer::SendPost(Session* session)
 
 void NetServer::CompleteSend(Session* session, int numOfBytes)
 {
-	while (!session->sendPostQueue_.IsEmpty())
+	while (1)
 	{
-		Packet* p = session->sendPostQueue_.Dequeue();
+		Packet* p;
+
+		bool ret = session->sendPostQueue_.Dequeue(p);
+
+		if (ret == false)
+			break;
 
 		//delete p;
 		p->Free();
@@ -339,7 +419,6 @@ void NetServer::ReleaseSession(Session* session)
 			return;
 
 		closesocket(session->socket_);
-		packetPool_.Free(session->recvPacket_);
 
 		int index = GetSessionIndex(session->sessionId_);
 

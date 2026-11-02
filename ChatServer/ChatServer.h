@@ -15,8 +15,6 @@ class ChatServer : public NetServer, public RpcStub
 {
 private:
 
-	constexpr static int TIMEOUT_MS = 40'000;
-
 	struct Player
 	{
 		uint64_t sessionId_;
@@ -25,23 +23,26 @@ private:
 		LoginId loginId_;
 		Nickname nickname_;
 
+		bool isLogin_;
+		bool isInitSector_ ;
 		DWORD lastRecvTime_;
 
+		// 0 ~ 49
 		unsigned short sectorX_;
 		unsigned short sectorY_;
 
 		//unsigned int lastChatTime_;
 		//int curChatCount_;
 
-		void Initialize(uint64_t sessionId, int64_t playerId, LoginId loginId, Nickname nickname);
-		void Initialize(uint64_t sessionId, int64_t playerId);
+		void Initialize(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname);
+		void Initialize(uint64_t sessionId);
 	};
 
 private:
 
 	std::thread logicThread_;
-	LockFreeQueue<std::pair<uint64_t, Packet*>> logicThreadMQ_;
-
+	LockFreeQueue<std::pair<uint64_t, Packet*>> messageQueue_;
+	//LockQueue<std::pair<uint64_t, Packet*>> messageQueue_;
 
 public:
 
@@ -57,21 +58,23 @@ private:
 
 	static void LogicThread(ChatServer* server);
 
-	void ProcessMQ();
-	void Update();
+	void ProcessMessageQueue();
+	void CheckTimeout();
 
+	constexpr static int TIMEOUT_MS = 40'000;
 
 private:
 
 	// if(map[x] == ...) 로직 금지 (새 원소 만듦)
-	std::unordered_map<uint64_t, int64_t> sessionIdToPlayerId_;
+	std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
 	std::unordered_map<int64_t, Player*> playerMap_;
 	int playerCount_ = 0;
 
-	uint64_t playerIdSeed_ = 0;
-	LockFreeQueue<uint64_t> disconnectedSessionId_;
 
+	bool CreatePlayer(uint64_t sessionId);
+	bool RemovePlayer(uint64_t sessionId);
 
+	
 	constexpr static int SECTOR_WIDTH = 50;
 	constexpr static int SECTOR_HEIGHT = 50;
 
@@ -79,11 +82,6 @@ private:
 
 	constexpr static int dx[3] = { 0, 1, -1 };
 	constexpr static int dy[3] = { 0 , 1, -1 };
-
-private:
-
-	Player* SessionIdToPlayer(uint64_t sessionId);
-
 
 	// ===================================================================================== //
 	// RPC
@@ -95,7 +93,7 @@ private:
 
 	bool ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
 
-	bool ReqMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat) override;
+	bool ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 
 	bool ReqHeartbeat(uint64_t sessionId) override;
 };

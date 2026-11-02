@@ -33,7 +33,6 @@ private:
 
 	struct iterator
 	{
-		friend class List;
 		Node* node_;
 
 	public:

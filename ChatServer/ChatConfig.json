@@ -1,9 +1,9 @@
 {
   "IP": "0.0.0.0",
-  "Port": 6000,
-  "SessionMax": 200,
-  "ConcurrentCount": 8,
-  "WorkerCount": 8,
+  "Port": 12001,
+  "SessionMax": 10000,
+  "ConcurrentCount": 2,
+  "WorkerCount": 2,
 
   "DBHost": "tcp://127.0.0.1:3306",
   "DBUser": "root",

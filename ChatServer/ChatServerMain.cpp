@@ -28,9 +28,9 @@ int main()
 		//else if (GetAsyncKeyState('C') & 0x0001)
 		//	ProfilerManager::Instance().Clear();
 
-		//server.Monitoring();
+		server.Monitoring();
 
-		Sleep(INFINITE);
+		Sleep(1000);
 	}
 
 	server.Stop();

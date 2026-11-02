@@ -2,12 +2,10 @@
 #include "RpcModule.h"
 #include "RPC/RpcProxy.h"
 #include "Utils/Logger.h"
-#include "Utils/TickController.h"
 
 #include <Windows.h>
 
-
-void ChatServer::Player::Initialize(uint64_t sessionId, int64_t playerId, LoginId loginId, Nickname nickname)
+void ChatServer::Player::Initialize(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname)
 {
 	sessionId_ = sessionId;
 	playerId_ = playerId;
@@ -15,23 +13,20 @@ void ChatServer::Player::Initialize(uint64_t sessionId, int64_t playerId, LoginI
 	loginId_ = loginId;
 	nickname_ = nickname;
 
-	// Session에 위치하면 동기화 문제 발생
-	lastRecvTime_ = TickController::Instance().CurTime();
-
-	// TODO: 0으로 초기화??
-	sectorX_ = 0;
-	sectorY_ = 0;
+	isLogin_ = true;
+	lastRecvTime_ = GetTickCount();
 
 	//lastChatTime_ = 0;
 	//curChatCount_ = 0;
 }
 
-void ChatServer::Player::Initialize(uint64_t sessionId, int64_t playerId)
+void ChatServer::Player::Initialize(uint64_t sessionId)
 {
 	sessionId_ = sessionId;
-	playerId_ = playerId;
 
-	lastRecvTime_ = TickController::Instance().CurTime();
+	isLogin_ = false;
+	isInitSector_ = false;
+	lastRecvTime_ = GetTickCount();
 }
 
 
@@ -49,7 +44,7 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (SessionCount() >= SessionMax())
+	if (sessionCount_ >= sessionMax_)
 	{
 		LOG(L"[Network] session limit over");
 
@@ -63,116 +58,118 @@ bool ChatServer::OnConnectionRequest(const std::string& ip, int port)
 
 void ChatServer::OnAccept(uint64_t sessionId)
 {
-	Player* player = new Player();
+	Packet* packet = packetPool_.Alloc();
+	packet->Initialize(5, 1);
 
-	/// playerId를 음수로 초기화
-	player->Initialize(sessionId, --playerIdSeed_);
+	/// 타입 번호??
+	*packet << static_cast<unsigned short>(100);
 
-	sessionIdToPlayerId_.insert({ player->sessionId_ , player->playerId_ });
-	playerMap_.insert({ player->playerId_, player });
+	messageQueue_.Enqueue({ sessionId, packet });
 }
 
 void ChatServer::OnRelease(uint64_t sessionId)
 {
-	/// 로직스레드에서 컨텐츠 삭제
-	disconnectedSessionId_.Enqueue(sessionId);
+	Packet* packet = packetPool_.Alloc();
+	packet->Initialize(5, 1);
 
-	// 다른 플레이어들에게 퇴장 알림
+	/// 타입 번호??
+	*packet << static_cast<unsigned short>(101);
 
-	return;
+	messageQueue_.Enqueue({ sessionId, packet });
 }
+
+
+bool ChatServer::CreatePlayer(uint64_t sessionId)
+{
+	Player* player = new Player();
+
+	player->Initialize(sessionId);
+
+	sessionIdToPlayer_.insert({ player->sessionId_ , player });
+
+	return true;
+}
+
+bool ChatServer::RemovePlayer(uint64_t sessionId)
+{
+	Player* player = sessionIdToPlayer_[sessionId];
+
+	sessionIdToPlayer_.erase(sessionId);
+
+	if (player->isLogin_)
+		playerMap_.erase(player->playerId_);
+
+	delete player;
+
+	// TODO: 다른 플레이어들에게 퇴장 알림
+
+	return true;
+}
+
 
 void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	// 로직 스레드에서 패킷 처리
-	logicThreadMQ_.Enqueue({ sessionId, packet });
+	packet->AddRef();
+	messageQueue_.Enqueue({ sessionId, packet });
 }
 
 void ChatServer::LogicThread(ChatServer* server)
 {
 	while (!server->shutdown_)
 	{
-		server->ProcessMQ();
+		server->ProcessMessageQueue();
 
-		server->Update();
-
-		TickController::Instance().Update();
+		server->CheckTimeout();
 	}
 }
 
-void ChatServer::ProcessMQ()
+void ChatServer::ProcessMessageQueue()
 {
-	DWORD curTime = TickController::Instance().CurTime();
-
 	while (1)
 	{
 		std::pair<uint64_t, Packet*> message;
-		bool ret = logicThreadMQ_.Dequeue(message);
-
-		if (ret == false)
-			return;
-
-		auto [sessionId, packet] = message;
-
-		Player* player = SessionIdToPlayer(sessionId);
-
-		if (player == nullptr)
-		{
-			Disconnect(sessionId);
-
-			return;
-		}
-
-		/// 로직스레드에서 타임아웃 갱신
-		player->lastRecvTime_ = curTime;
-
-		// 함수의 인자 자료형 주의
-		//if (!PacketProc(sessionId, packet))
-		//{
-		//	Disconnect(sessionId);
-
-		//	return;
-		//}
-
-		packet->Free();
-	}
-}
-
-void ChatServer::Update()
-{
-	/// 세션 종료된 플레이어 삭제 (여기서만 삭제)
-	while (1)
-	{
-		uint64_t sessionId;
-
-		bool ret = disconnectedSessionId_.Dequeue(sessionId);
+		bool ret = messageQueue_.Dequeue(message);
 
 		if (ret == false)
 			break;
 
-		if (sessionIdToPlayerId_.count(sessionId) == 0)
-			return;
+		auto [sessionId, packet] = message;
 
-		int64_t playerId = sessionIdToPlayerId_[sessionId];
 
-		if (playerMap_.count(playerId) == 0)
+		unsigned short type;
+		*packet >> type;
+
+		switch (type)
 		{
-			sessionIdToPlayerId_.erase(sessionId);
+		case 100:
 
-			return;
+			CreatePlayer(sessionId);
+			break;
+
+		case 101:
+
+			RemovePlayer(sessionId);
+			break;
+
+		default:
+
+			/// RPC 패킷 처리 (타입 자료형 주의)
+			if (!PacketProc(sessionId, packet, type))
+			{
+				Disconnect(sessionId);
+			}
+
+			packet->Free();
 		}
-
-		Player* player = playerMap_[playerId];
-
-		sessionIdToPlayerId_.erase(sessionId);
-		playerMap_.erase(playerId);
-
-		delete player;
 	}
+}
 
-	DWORD curTime = TickController::Instance().CurTime();
+void ChatServer::CheckTimeout()
+{
+	DWORD curTime = GetTickCount();
 
-	/// 타임아웃 플레이어 세션 종료
+	// 타임아웃 플레이어 세션 종료
 	for (auto& pm : playerMap_)
 	{
 		Player* p = pm.second;
@@ -182,21 +179,4 @@ void ChatServer::Update()
 			Disconnect(p->sessionId_);
 		}
 	}
-}
-
-ChatServer::Player* ChatServer::SessionIdToPlayer(uint64_t sessionId)
-{
-	if (sessionIdToPlayerId_.count(sessionId) == 0)
-		return nullptr;
-
-	int64_t playerId = sessionIdToPlayerId_[sessionId];
-
-	if (playerMap_.count(playerId) == 0)
-	{
-		sessionIdToPlayerId_.erase(sessionId);
-
-		return nullptr;
-	}
-
-	return playerMap_[playerId];
 }

@@ -44,7 +44,11 @@ public:
 		fout_.open(fileName_);
 
 		if (!fout_.is_open())
+		{
 			printf("*** Logger fail ***\n");
+
+			__debugbreak();
+		}
 	}
 
 	~Logger()
@@ -91,7 +95,8 @@ public:
 			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
 			threadId, levelStr, userMessage);
 
-		std::wcout << finalMessage;
-		//fout_ << finalMessage;
+		//std::wcout << finalMessage;
+		fout_ << finalMessage;
+		fout_.flush();
 	}
 };

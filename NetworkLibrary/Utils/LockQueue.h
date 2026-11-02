@@ -3,25 +3,26 @@
 #include <mutex>
 #include "Packet.h"
 
-class MessageQueue
+template<typename T>
+class LockQueue
 {
 private:
 
-	std::queue<Message> queue_;
+	std::queue<T> queue_;
 	std::mutex lock_;
 
 public:
 
-	void Push(Message message)
+	void Enqueue(T value)
 	{
 		lock_.lock();
 
-		queue_.push(message);
+		queue_.push(value);
 
 		lock_.unlock();
 	}
 
-	bool Pop(Message& message)
+	bool Dequeue(T& value)
 	{
 		lock_.lock();
 
@@ -32,7 +33,7 @@ public:
 			return false;
 		}
 
-		message = queue_.front();
+		value = queue_.front();
 
 		queue_.pop();
 

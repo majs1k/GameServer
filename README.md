@@ -4,7 +4,7 @@
 
 Tech     : C++14, MySQL
 
-Platform : Windows x64 / Visual Studio 2022
+Platform : Windows / Visual Studio 2022
 
 ---
 
@@ -12,64 +12,9 @@ Platform : Windows x64 / Visual Studio 2022
 
 * IOCP 네트워크 라이브러리 구현
 * IO / Logic / DB Thread
-* RPC
 * Stateful Server
 
-
-```
-
-### Thread Model
-
-```text
-                    Client
-                      │
-                      │ TCP
-                      ▼
-              ┌───────────────┐
-              │   IO Worker   │
-              └───────┬───────┘
-                      │
-                 Packet 조립
-                      │
-                      ▼
-                Network Queue 
-                      │
-                      ▼
-              ┌───────────────┐
-              │  Logic Thread │
-              └───────┬───────┘
-                      │
-               DB Request Queue
-                      │
-                      ▼
-              ┌───────────────┐
-              │   DB Thread   │
-              │     MySQL     │
-              └───────┬───────┘
-                      │
-               DB Response Queue
-                      │
-                      ▼
-              ┌───────────────┐
-              │ Logic Thread  │
-              └───────────────┘
-```
-
-
-## RPC
-
-IDL 파일을 기반으로 Client / Server RPC 코드를 자동 생성합니다.
-
-```text
-               IDL
-                │
-                ▼
-          RPC Generator
-                │
-        ┌───────┴───────┐
-        ▼               ▼
-   Server Proxy      Server Stub
-```
+---
 
 ## DevLog
 ### 26-06-00
@@ -141,14 +86,9 @@ WSASend() 호출시 wsabuf count 0인 상황 발생시 10022 에러 발생
 -> for문 탈출조건에 어떤 메서드 넣지 말고 스택변수로 넣기 & 링버퍼 크기 충분히 늘리기
 ```
 
-### 26-08-05
-```
-send시 복사 생략 로직 수정
-```
-
 ### 26-08-18
 ```
-Rpc코드를 헤더파일로만 작동하도록 수정했다가 롤백 (RpcModule 코드를 사용할수 없게 되어서 불가능함)
+Rpc 코드를 헤더파일로만 작동하도록 수정했다가 롤백 (RpcModule 코드를 사용할수 없게 되어서 불가능함)
 Rpc 인자 레퍼런스 적용 가능
 ```
 
@@ -160,4 +100,20 @@ db 정의파일 및 자동생성 코드
 ### 26-10-30
 ```
 락프리 노드풀 전역으로 변경
+```
+
+### 26-10-31
+```
+로직 스레드는 직렬 처리되므로 매번 수신 로직마다 if(map.count(xxx) > 0) ... 이런식으로 처리할 필요 없음. 
+(이미 100% 생성될수밖에 없는 상황인 경우라면)
+
+isLogin, isInitSector 등 로직 확인용 변수는 따로 관리하는 것이 실수가 적음
+if(sectorX < 0) 이런식으로 관리하는 방식에 비하여...
+
+수신 버퍼 최적화 코드 수정
+로그 flush 적용
+rpc 인자 레퍼런스 적용
+sessionId vector 오버로딩 적용
+중복 로그인 처리 -> 둘다 연결 종료
+sessionId , Player* 로 해시맵 수정
 ```

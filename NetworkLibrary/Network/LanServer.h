@@ -60,6 +60,9 @@ private:
 
 		//std::recursive_mutex sessionLock_;
 
+		Session();
+		~Session();
+
 		void Initialize(SOCKET socket, std::string ip, int port, uint64_t id);
 	};
 
@@ -84,6 +87,8 @@ private:
 	//std::stack<int> sessionIndex_;
 	LockFreeStack<int> sessionIndex_;
 
+protected:
+
 	LONG sessionCount_ = 0;
 	int sessionMax_;
 
@@ -96,9 +101,6 @@ public:
 
 	bool Start(std::string ip, int port, int sessionMax, int concurrentCount, int workerCount);
 	void Stop();
-
-	int SessionCount() const;
-	int SessionMax() const;
 
 	bool Disconnect(uint64_t sessionId);
 	bool SendPacket(uint64_t sessionId, Packet* packet);

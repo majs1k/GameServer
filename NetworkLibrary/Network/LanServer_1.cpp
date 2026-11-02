@@ -10,6 +10,18 @@
 #include "../Utils/Profiler.h"
 #include <Windows.h>
 
+
+LanServer::Session::Session()
+{
+	recvPacket_ = packetPool_.Alloc();
+}
+
+LanServer::Session::~Session()
+{
+	packetPool_.Free(recvPacket_);
+}
+
+
 void LanServer::Session::Initialize(SOCKET socket, std::string ip, int port, uint64_t id)
 {
 	socket_ = socket;
@@ -22,7 +34,6 @@ void LanServer::Session::Initialize(SOCKET socket, std::string ip, int port, uin
 	sendPostQueue_.Clear();
 
 	//recvQueue_.Clear();
-	recvPacket_ = packetPool_.Alloc();
 	recvPacket_->InitRecvPacket(sizeof(LAN_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
@@ -53,14 +64,13 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	sessionMax_ = sessionMax;
 	//sessionMap_.reserve(sessionMax_);
 
-	for (int i = 0; i < 200; i++)
+	for (int i = 0; i < sessionMax_; i++)
 	{
 		sessions[i] = new Session();
 	}
 
-	for (int i = 0; i < 200; i++)
+	for (int i = 0; i < sessionMax_; i++)
 	{
-		//sessionIndex_.push(200 - i - 1);
 		sessionIndex_.Push(sessionMax_ - i - 1);
 	}
 
@@ -168,16 +178,6 @@ void LanServer::Stop()
 	LOG_INFO(L"[NETWORK] server exit");
 }
 
-int LanServer::SessionCount() const
-{
-	return sessionCount_;
-}
-
-int LanServer::SessionMax() const
-{
-	return sessionMax_;
-}
-
 bool LanServer::Disconnect(uint64_t sessionId)
 {
 	Session* session = sessions[GetSessionIndex(sessionId)];
@@ -219,7 +219,6 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	/// Packet* 링버퍼 용도
 	session->sendQueue_.Enqueue(packet);
 
-	// TODO: 값 수정
 	if (session->sendQueue_.Size() > 2000)
 	{
 		Disconnect(sessionId);

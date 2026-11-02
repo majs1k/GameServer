@@ -1,33 +1,34 @@
 #include "ChatServer.h"
 #include "RpcModule.h"
 #include "RPC/RpcProxy.h"
-#include "Utils/TickController.h"
+#include "Utils/Logger.h"
 
 
 bool ChatServer::ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
 {
-	// 접속안된 플레이어 & 플레이어 중복 접속 차단
-	if (sessionIdToPlayerId_.count(sessionId) == 0 || sessionIdToPlayerId_[sessionId] > 0)
+	Player* player = sessionIdToPlayer_[sessionId];
+
+	// 플레이어 중복 접속 차단
+	if (playerMap_.count(playerId))
 	{
 		g_RpcProxy.ResLogin(sessionId, ELOGIN::FAIL, playerId);
+
+		Disconnect(sessionId);
+
+		// 기존 연결도 종료
+		Disconnect(playerMap_[playerId]->sessionId_);
 
 		return false;
 	}
 
+	player->lastRecvTime_ = GetTickCount();
+
 	// TODO: 세션 키 인증
 
-	int64_t oldPlayerId = sessionIdToPlayerId_[sessionId];
-	Player* player = playerMap_[oldPlayerId];
-
-	playerMap_.erase(oldPlayerId);
-
-	sessionIdToPlayerId_.insert({ sessionId, playerId });
+	player->Initialize(sessionId, playerId, loginId, nickname);
 	playerMap_.insert({ playerId, player });
 
-	player->Initialize(sessionId, playerId, loginId, nickname);
-
-
-	// 섹터 벡터에 삽입
+	// 섹터 리스트에 삽입
 	sector_[player->sectorX_][player->sectorY_].push_back(player);
 
 	g_RpcProxy.ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
@@ -37,10 +38,40 @@ bool ChatServer::ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId
 
 bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
 {
-	Player* player = SessionIdToPlayer(sessionId);
+	Player* player = sessionIdToPlayer_[sessionId];
 
-	if (player == nullptr)
+	if (!player->isLogin_)
 		return false;
+
+	player->lastRecvTime_ = GetTickCount();
+
+	if (playerId != player->playerId_)
+	{
+		__debugbreak();
+
+		return false;
+	}
+
+	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
+	{
+		LOG(L"not valid sector");
+
+		return false;
+	}
+
+	if (!player->isInitSector_)
+	{
+		player->isInitSector_ = true;
+
+	}
+	else
+	{
+		// 만약 1칸씩만 이동이 가능하다면 추가
+		//if (abs(sectorX - player->sectorX_) > 1 || abs(sectorY - player->sectorY_) > 1)
+		//{
+		//	return false;
+		//}
+	}
 
 	sector_[player->sectorX_][player->sectorY_].remove(player);
 
@@ -52,12 +83,29 @@ bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sect
 	g_RpcProxy.ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
 }
 
-bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
-	Player* player = SessionIdToPlayer(sessionId);
+	Player* player = sessionIdToPlayer_[sessionId];
 
-	if (player == nullptr)
+	if (!player->isLogin_)
 		return false;
+
+	if (!player->isInitSector_)
+	{
+		LOG(L"not init sector");
+
+		return false;
+	}
+
+	player->lastRecvTime_ = GetTickCount();
+
+
+	if (playerId != player->playerId_)
+	{
+		__debugbreak();
+
+		return false;
+	}
 
 	//unsigned int now = GetTickCount();
 
@@ -112,12 +160,12 @@ bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, LoginId& login
 
 bool ChatServer::ReqHeartbeat(uint64_t sessionId)
 {
-	Player* player = SessionIdToPlayer(sessionId);
+	Player* player = sessionIdToPlayer_[sessionId];
 
-	if (player == nullptr)
+	if (!player->isLogin_)
 		return false;
 
-	player->lastRecvTime_ = TickController::Instance().CurTime();
+	player->lastRecvTime_ = GetTickCount();
 
 	return true;
 }

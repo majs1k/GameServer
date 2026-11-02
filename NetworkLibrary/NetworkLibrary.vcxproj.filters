@@ -36,7 +36,7 @@
     <ClInclude Include="Utils\Packet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\MessageQueue.h">
+    <ClInclude Include="Utils\LockQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Profiler.h">

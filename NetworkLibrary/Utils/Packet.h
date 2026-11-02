@@ -10,6 +10,7 @@
 #pragma once
 #include <atomic>
 #include "MemoryPoolTls.h"
+#include "Random.h"
 
 using sbyte = int8_t;
 using byte = uint8_t;
@@ -20,7 +21,9 @@ using uint = uint32_t;
 #pragma pack(push, 1)
 // ------------------------------------------------------- //
 
-const static unsigned char key = 0xa9;
+
+inline constexpr static unsigned char NET_CODE = 0x77;
+inline constexpr static unsigned char NET_KEY = 0x32;
 
 struct NET_HEADER
 {
@@ -61,7 +64,7 @@ struct MY_HEADER
 
 #pragma pack(pop)
 
-/// TODO: 수정
+// TODO: 용량 수정
 #define PACKET_CAPACITY				2000
 #define HEADER_CAPACITY				5
 
@@ -84,7 +87,9 @@ private:
 	int headerSize_ = 0;
 
 	bool isError_ = false;
+	bool isEncoding_ = false;
 	std::atomic<int> refCount_ = 0;
+
 
 public:
 
@@ -105,16 +110,18 @@ public:
 
 		headerSize_ = headerSize;
 		isError_ = false;
+		isEncoding_ = false;
 		refCount_ = count;
 	}
 
 	void InitRecvPacket(int headerSize)
 	{
 		writePos_ = HEADER_CAPACITY - headerSize;
-		readPos_ = HEADER_CAPACITY;
+		readPos_ = HEADER_CAPACITY - headerSize;
 
 		headerSize_ = headerSize;
 		isError_ = false;
+		isEncoding_ = false;
 		refCount_ = 1;
 	}
 
@@ -131,93 +138,6 @@ public:
 		}
 	}
 
-	void SetLanHeader()
-	{
-		LAN_HEADER* header = reinterpret_cast<LAN_HEADER*>(GetHeaderPtr());
-
-		header->size_ = UseSize();
-	}
-
-	void SetNetHeader()
-	{
-		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
-
-		header->code_ = 0;
-		header->size_ = UseSize();
-		header->randKey_ = 0x31;
-
-		int sum = 0;
-
-		for (int i = 0; i < UseSize(); i++)
-		{
-			sum += *(reinterpret_cast<unsigned char*>(buffer_) + HEADER_CAPACITY + i);
-		}
-
-		header->checksum_ = sum % 256;
-	}
-
-	void Encoding()
-	{
-		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
-		unsigned char randKey = header->randKey_;
-
-		/// TODO: 위치 수정
-		char* buffer = buffer_ + HEADER_CAPACITY;
-
-		int s = 0;
-
-		unsigned char p;
-		unsigned char e;
-
-		p = buffer[s] ^ (randKey + 1);
-		e = p ^ (key + 1);
-		buffer[0] = e;
-
-		while (UseSize() > ++s)
-		{
-			p = buffer[s] ^ (p + randKey + s + 1);
-			e = p ^ (e + key + s + 1);
-
-			buffer[s] = e;
-		}
-	}
-
-	void Decoding()
-	{
-		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
-		unsigned char randKey = header->randKey_;
-
-		/// TODO: 위치 수정
-		char* buffer = buffer_ + HEADER_CAPACITY;
-
-		int s = 0;
-
-		unsigned char p;
-		unsigned char d;
-
-		unsigned char oldE;
-		unsigned char oldP;
-
-		p = buffer[s] ^ (key + 1);
-		d = p ^ (randKey + 1);
-
-		oldE = buffer[s];
-		oldP = p;
-
-		buffer[0] = d;
-
-		while (UseSize() > ++s)
-		{
-			p = buffer[s] ^ (oldE + key + s + 1);
-			d = p ^ (oldP + randKey + s + 1);
-
-			oldE = buffer[s];
-			oldP = p;
-
-			buffer[s] = d;
-		}
-	}
-
 	char* GetHeaderPtr() const
 	{
 		return buffer_ + HEADER_CAPACITY - headerSize_;
@@ -226,16 +146,6 @@ public:
 	char* GetBodyPtr() const
 	{
 		return buffer_ + HEADER_CAPACITY;
-	}
-
-	int GetHeaderSize() const
-	{
-		return headerSize_;
-	}
-
-	bool IsError() const
-	{
-		return isError_;
 	}
 
 	char* GetFrontBufferPtr() const
@@ -248,6 +158,11 @@ public:
 		return buffer_ + writePos_;
 	}
 
+	int GetHeaderSize() const
+	{
+		return headerSize_;
+	}
+
 	// 헤더 제외
 	int	UseSize() const
 	{
@@ -257,6 +172,126 @@ public:
 	int	FreeSize() const
 	{
 		return capacity_ - writePos_;
+	}
+
+	void SetLanHeader()
+	{
+		LAN_HEADER* header = reinterpret_cast<LAN_HEADER*>(GetHeaderPtr());
+
+		header->size_ = UseSize();
+	}
+
+	void SetNetHeader()
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+
+		header->code_ = NET_CODE;
+		header->size_ = UseSize();
+		header->randKey_ = RAND(0, 255);
+
+		int sum = 0;
+
+		for (int i = 0; i < UseSize(); i++)
+		{
+			sum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
+		}
+
+		header->checksum_ = sum % 256;
+	}
+
+	bool IsValidChecksum() const
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+
+		int sum = 0;
+
+		unsigned char checksum = 0;
+
+		for (int i = 0; i < UseSize(); i++)
+		{
+			sum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
+		}
+
+		checksum = sum % 256;
+
+		if (header->checksum_ != checksum)
+			return false;
+
+		return true;
+	}
+
+	void Encoding()
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+		unsigned char randKey = header->randKey_;
+
+		/// 체크섬부터 인코딩
+		char* buffer = GetBodyPtr() - 1;
+
+		int s = 0;
+
+		unsigned char p;
+		unsigned char e;
+
+		p = buffer[s] ^ (randKey + 1);
+		e = p ^ (NET_KEY + 1);
+		buffer[0] = e;
+
+		while (UseSize() + 1 > ++s)
+		{
+			p = buffer[s] ^ (p + randKey + s + 1);
+			e = p ^ (e + NET_KEY + s + 1);
+
+			buffer[s] = e;
+		}
+
+		isEncoding_ = true;
+	}
+
+	void Decoding()
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+		unsigned char randKey = header->randKey_;
+
+		/// 체크섬부터 디코딩
+		char* buffer = GetBodyPtr() - 1;
+
+		int s = 0;
+
+		unsigned char p;
+		unsigned char d;
+
+		unsigned char oldE;
+		unsigned char oldP;
+
+		p = buffer[s] ^ (NET_KEY + 1);
+		d = p ^ (randKey + 1);
+
+		oldE = buffer[s];
+		oldP = p;
+
+		buffer[0] = d;
+
+		while (UseSize() + 1 > ++s)
+		{
+			p = buffer[s] ^ (oldE + NET_KEY + s + 1);
+			d = p ^ (oldP + randKey + s + 1);
+
+			oldE = buffer[s];
+			oldP = p;
+
+			buffer[s] = d;
+		}
+	}
+
+	bool IsEncoding() const
+	{
+		return isEncoding_;
+	}
+
+	bool IsError() const
+	{
+		return isError_;
 	}
 
 	int	MoveWritePos(int size)

@@ -1,11 +1,8 @@
 #include "RpcStub.h"
 
 
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
+bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
 {
-    unsigned short type;
-    *packet >> type;
-
     switch (type)
     {
         case 1:
@@ -51,13 +48,11 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         case 5:
         {
 			int64_t playerId;
-			LoginId loginId;
-			Nickname nickname;
 			Chat chat;
 
-            *packet >> playerId >> loginId >> nickname >> chat;
+            *packet >> playerId >> chat;
 
-            return ReqMessage(sessionId, playerId, loginId, nickname, chat);
+            return ReqMessage(sessionId, playerId, chat);
         }
         case 6:
         {
@@ -107,7 +102,7 @@ bool RpcStub::ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX
     return true;
 }
 
-bool RpcStub::ReqMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+bool RpcStub::ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
     return true;
 }

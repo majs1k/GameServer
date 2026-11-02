@@ -6,7 +6,6 @@
 #include "Player.h"
 #include "Icon.h"
 
-//#include "RPC/RpcClientProxy.h"
 #include "RPC/RpcClientStub.h"
 
 #include "OmokGame.h"

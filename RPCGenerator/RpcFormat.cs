@@ -18,9 +18,11 @@ class NetServer;
 class RpcProxy
 {{
 public:
+
     NetServer* server_;
 
-public:{0}
+public:
+{0}
 }};
 ";
 
@@ -37,7 +39,7 @@ void RpcProxy::{0}(uint64_t sessionId{1})
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(5, 1);
 
-    *packet << {2};
+    *packet << static_cast<unsigned short>({2});
     *packet{3};
 
     server_->SendPacket(sessionId, packet);
@@ -60,18 +62,18 @@ void RpcProxy::{0}(uint64_t sessionId{1})
         // 벡터 버전 함수 선언
         public static string proxyHeaderFuncVector =
         @"
-    void {0}(std::vector<uint64_t> sessionIds{1});";
+    void {0}(std::vector<uint64_t>& sessionIds{1});";
 
 
         // 벡터 버전 함수 구현
         public static string proxyCppFuncVector =
         @"
-void RpcProxy::{0}(std::vector<uint64_t> sessionIds{1})
+void RpcProxy::{0}(std::vector<uint64_t>& sessionIds{1})
 {{
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(5, sessionIds.size());
 
-    *packet << {2};
+    *packet << static_cast<unsigned short>({2});
     *packet{3};
 
     for (auto& sessionId : sessionIds)
@@ -94,7 +96,7 @@ class RpcStub
 {{
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet);
+    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
     {0}
 }};
 ";
@@ -107,11 +109,8 @@ public:
         // PacketProc 구현
         public static string stubCppPacketProc =
 @"
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
+bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
 {{
-    unsigned short type;
-    *packet >> type;
-
     switch (type)
     {{{0}
     default:

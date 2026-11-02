@@ -244,23 +244,20 @@ public:
 		return queue_.size();
 	}
 
-	bool IsEmpty() const
-	{
-		return queue_.empty();
-	}
-
-	void Enqueue(T value)
+	void Enqueue(T& value)
 	{
 		queue_.push(value);
 	}
 
-	T Dequeue()
+	bool Dequeue(T& value)
 	{
-		T value = queue_.front();
+		if (queue_.empty())
+			return false;
+
+		value = queue_.front();
 
 		queue_.pop();
 
-		return value;
+		return true;
 	}
-
 };

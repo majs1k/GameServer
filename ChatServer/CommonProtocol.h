@@ -204,19 +204,29 @@ struct Nickname
 struct SessionKey
 {
 	char sessionKey_[64];
+
+	bool operator==(const SessionKey& other) const
+	{
+		return strcmp(sessionKey_, other.sessionKey_) == 0;
+	}
+
+	bool operator!=(const SessionKey& other) const
+	{
+		return !(*this == other);
+	}
 };
 
 struct Chat
 {
 	short len_;
-	wchar_t message_[100];
+	wchar_t chat_[100];
 
 	Chat() = default;
 
-	Chat(const wchar_t* message)
+	Chat(const wchar_t* chat)
 	{
-		wcscpy_s(message_, 100, message);
-		len_ = wcslen(message_) * sizeof(wchar_t);
+		wcscpy_s(chat_, 100, chat);
+		len_ = wcslen(chat_) * sizeof(wchar_t);
 	}
 };
 

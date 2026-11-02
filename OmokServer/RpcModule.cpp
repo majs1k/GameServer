@@ -11,7 +11,6 @@
 #include <string>
 
 RpcServerProxy g_RpcProxy;
-RpcClientProxy g_ClientRpcProxy;
 
 DbProxy g_DbProxy;
 
@@ -146,22 +145,6 @@ inline Packet& operator>>(Packet& packet, PlayerInfo& info)
 	packet >> info.playerName_;
 	packet >> info.rating_;
 	packet >> info.state_;
-
-	return packet;
-}
-
-inline Packet& operator<<(Packet& packet, Icon icon)
-{
-	packet << icon.inventoryId_;
-	packet << icon.iconId_;
-
-	return packet;
-}
-
-inline Packet& operator>>(Packet& packet, Icon& icon)
-{
-	packet >> icon.inventoryId_;
-	packet >> icon.iconId_;
 
 	return packet;
 }

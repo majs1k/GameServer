@@ -7,7 +7,6 @@
 
 #include "ResponseCode.h"
 #include "Player.h"
-#include "Icon.h"
 #include "MatchMaker.h"
 #include "GameRoom.h"
 

@@ -18,6 +18,8 @@ public:
 	TestServer();
 	~TestServer();
 
+private:
+
 	bool OnConnectionRequest(const std::string& ip, int port) override;
 	void OnAccept(uint64_t sessionId) override;
 	void OnRelease(uint64_t sessionId) override;
