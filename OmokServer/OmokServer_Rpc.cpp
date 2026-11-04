@@ -132,69 +132,6 @@ bool OmokServer::ReqChat(__int64 sessionId, std::string& message)
 	return true;
 }
 
-bool OmokServer::ReqBuyIcon(__int64 sessionId)
-{
-	Player* player = playerManager_.GetPlayerBySessionId(sessionId);
-
-	if (player == nullptr)
-		return true;
-
-	int playerId = player->playerId_;
-
-	if (player->state_ != PLAYER_STATE::LOBBY)
-		return true;
-
-	Icon icon;
-
-	if (player->money_ < 1000)
-	{
-		icon.iconId_ = 0;
-
-		g_RpcProxy.ResBuyIcon(sessionId, icon, player->money_);
-
-		return true;
-	}
-
-	player->money_ -= 1000;
-
-	// TODO: 아이콘 랜덤 지급
-	icon.iconId_ = 1;
-	icon.inventoryId_ = inventoryRepository_.GenerateInventoryId();
-
-	g_RpcProxy.ResBuyIcon(sessionId, icon, player->money_);
-
-	g_DbProxy.ReqBuyIconDB(sessionId, playerId, icon.inventoryId_, icon.iconId_, player->money_);
-
-	return true;
-}
-
-bool OmokServer::ReqChangeEquipment(__int64 sessionId, int inventoryId)
-{
-	Player* player = playerManager_.GetPlayerBySessionId(sessionId);
-
-	if (player == nullptr)
-		return true;
-
-	// 플레이어가 로비가 아니라면 리턴
-	if (player->state_ != PLAYER_STATE::LOBBY)
-		return true;
-
-	// 해당 아이콘 보유하고 있을시, db 저장
-	for (auto& i : player->icons_)
-	{
-		if (i.inventoryId_ == inventoryId)
-		{
-			g_RpcProxy.ResChangeEquipment(sessionId, inventoryId);
-
-			g_DbProxy.ReqChangeEquipmentDB(sessionId, player->playerId_, inventoryId);
-
-			break;
-		}
-	}
-
-	return true;
-}
-
 bool OmokServer::ReqStartMatch(__int64 sessionId)
 {
 	Player* player = playerManager_.GetPlayerBySessionId(sessionId);

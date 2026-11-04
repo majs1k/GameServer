@@ -22,7 +22,7 @@ LanServer::Session::~Session()
 }
 
 
-void LanServer::Session::Initialize(SOCKET socket, std::string ip, int port, uint64_t id)
+void LanServer::Session::Initialize(SOCKET socket, std::string& ip, int port, uint64_t id)
 {
 	socket_ = socket;
 	sessionId_ = id;
@@ -34,7 +34,7 @@ void LanServer::Session::Initialize(SOCKET socket, std::string ip, int port, uin
 	sendPostQueue_.Clear();
 
 	//recvQueue_.Clear();
-	recvPacket_->InitRecvPacket(sizeof(LAN_HEADER));
+	recvPacket_->Clear(sizeof(LAN_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
 	recvOverlapped_.type = IO_TYPE::RECV;
@@ -217,6 +217,7 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	//delete packet;
 
 	/// Packet* 링버퍼 용도
+	packet->AddRef();
 	session->sendQueue_.Enqueue(packet);
 
 	if (session->sendQueue_.Size() > 2000)
@@ -226,7 +227,7 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 		return false;
 	}
 
-	InterlockedIncrement(&sendMessageCount_);
+	++sendMessageCount_;
 
 	this->SendPost(session);
 
@@ -260,9 +261,9 @@ unsigned int __stdcall LanServer::AcceptThread(void* param)
 			continue;
 		}
 
-		InterlockedIncrement(&server->acceptCount_);
+		++server->acceptCount_;
 
-		CHAR str[16];
+		char str[16];
 		InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
 		std::string ip = str;
 		int port = ntohs(clientAddr.sin_port);
@@ -396,20 +397,9 @@ unsigned int __stdcall LanServer::WorkerThread(void* param)
 
 void LanServer::Monitoring()
 {
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	// 콘솔창 커서 숨기기
-	CONSOLE_CURSOR_INFO cursorInfo;
-	GetConsoleCursorInfo(hConsole, &cursorInfo);
-
-	cursorInfo.bVisible = FALSE;
-	SetConsoleCursorInfo(hConsole, &cursorInfo);
-
-	LONG acceptTps = InterlockedExchange(&acceptCount_, 0);
-	LONG recvMessageTps = InterlockedExchange(&recvMessageCount_, 0);
-	LONG sendMessageTps = InterlockedExchange(&sendMessageCount_, 0);
-
-	system("cls");
+	int acceptTps = acceptCount_.exchange(0);
+	int recvMessageTps = recvMessageCount_.exchange(0);
+	int sendMessageTps = sendMessageCount_.exchange(0);
 
 	printf("=====================\n");
 	printf(" SERVER  MONITORING\n");

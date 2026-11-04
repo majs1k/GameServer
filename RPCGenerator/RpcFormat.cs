@@ -37,12 +37,14 @@ public:
 void RpcProxy::{0}(uint64_t sessionId{1})
 {{
     Packet* packet = packetPool_.Alloc();
-    packet->Initialize(5, 1);
+    packet->Initialize(sizeof(NET_HEADER));
 
     *packet << static_cast<unsigned short>({2});
     *packet{3};
 
     server_->SendPacket(sessionId, packet);
+
+    packet->Free();
 }}
 ";
 
@@ -71,7 +73,7 @@ void RpcProxy::{0}(uint64_t sessionId{1})
 void RpcProxy::{0}(std::vector<uint64_t>& sessionIds{1})
 {{
     Packet* packet = packetPool_.Alloc();
-    packet->Initialize(5, sessionIds.size());
+    packet->Initialize(sizeof(NET_HEADER));
 
     *packet << static_cast<unsigned short>({2});
     *packet{3};
@@ -80,6 +82,8 @@ void RpcProxy::{0}(std::vector<uint64_t>& sessionIds{1})
 	{{
 		server_->SendPacket(sessionId, packet);
 	}}
+
+    packet->Free();
 }}
 ";
 
@@ -96,7 +100,7 @@ class RpcStub
 {{
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
+    bool PacketProc(uint64_t sessionId, Packet* packet);
     {0}
 }};
 ";
@@ -109,14 +113,15 @@ public:
         // PacketProc 구현
         public static string stubCppPacketProc =
 @"
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
+bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 {{
+    unsigned short type;
+    *packet >> type;
+
     switch (type)
     {{{0}
     default:
     {{
-        // 로그 추가
-
         return false;
     }}
     }}
@@ -138,13 +143,13 @@ bool RpcStub::{0}(uint64_t sessionId{1})
 
         public static string stubPacketProcCase =
 @"
-        case {0}:
-        {{
+    case {0}:
+    {{
 {1}
-            *packet{2};
-
-            return {3}(sessionId{4});
-        }}";
+        *packet{2};
+    
+        return {3}(sessionId{4});
+    }}";
 
         public static string shiftRight =
 @" >> {0}";

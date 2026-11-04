@@ -10,7 +10,7 @@
 #include <vector>
 #include <string>
 
-RpcServerProxy g_RpcProxy;
+RpcProxy g_RpcProxy;
 
 DbProxy g_DbProxy;
 
@@ -65,25 +65,8 @@ inline Packet& operator>>(Packet& packet, std::vector<T>& vec)
 	return packet;
 }
 
-inline Packet& operator<<(Packet& packet, RESPONSE_CODE code)
-{
-	packet << static_cast<short>(code);
 
-	return packet;
-}
-
-inline Packet& operator>>(Packet& packet, RESPONSE_CODE& code)
-{
-	short c;
-	packet >> c;
-
-	code = static_cast<RESPONSE_CODE>(c);
-
-	return packet;
-}
-
-
-inline Packet& operator<<(Packet& packet, PLAYER_STATE state)
+inline Packet& operator<<(Packet& packet, PLAYER_STATE& state)
 {
 	packet << static_cast<short>(state);
 
@@ -101,7 +84,7 @@ inline Packet& operator>>(Packet& packet, PLAYER_STATE& state)
 }
 
 
-inline Packet& operator<<(Packet& packet, Player player)
+inline Packet& operator<<(Packet& packet, Player& player)
 {
 	packet << player.playerId_;
 	packet << player.playerName_;
@@ -129,7 +112,7 @@ inline Packet& operator>>(Packet& packet, Player& player)
 	return packet;
 }
 
-inline Packet& operator<<(Packet& packet, PlayerInfo info)
+inline Packet& operator<<(Packet& packet, PlayerInfo& info)
 {
 	packet << info.playerId_;
 	packet << info.playerName_;
@@ -149,7 +132,7 @@ inline Packet& operator>>(Packet& packet, PlayerInfo& info)
 	return packet;
 }
 
-inline Packet& operator<<(Packet& packet, STONE stone)
+inline Packet& operator<<(Packet& packet, STONE& stone)
 {
 	packet << static_cast<short>(stone);
 
@@ -167,10 +150,8 @@ inline Packet& operator>>(Packet& packet, STONE& stone)
 }
 
 
-#include "RPC/RpcServerProxy.cpp"
-#include "RPC/RpcServerStub.cpp"
-#include "RPC/RpcClientProxy.cpp"
-#include "RPC/RpcClientStub.cpp"
+#include "RPC/RpcProxy.cpp"
+#include "RPC/RpcStub.cpp"
 
 #include "Database/DbProxy.cpp"
 #include "Database/DbStub.cpp"

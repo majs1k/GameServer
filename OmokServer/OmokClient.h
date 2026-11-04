@@ -4,9 +4,8 @@
 
 #include "ResponseCode.h"
 #include "Player.h"
-#include "Icon.h"
 
-#include "RPC/RpcClientStub.h"
+#include "RPC/RpcStub.h"
 
 #include "OmokGame.h"
 
@@ -18,16 +17,12 @@ enum class SCENE
 	GAME
 };
 
-class RpcClientProxy;
 
-
-class OmokClient : public LanClient, public RpcClientStub
+class OmokClient : public LanClient, public RpcStub
 {
 	friend class OmokClientUI;
 
 public:
-
-	void AttachProxy(RpcClientProxy* rpcProxy);
 
 	void OnConnect() override;
 	void OnRelease() override;
@@ -72,8 +67,6 @@ private:
 
 	bool ResPlayerProfile(Player& player) override;
 
-	bool ResPlayerIcons(std::vector<Icon>& icons) override;
-
 
 	bool ResChat(int playerId, std::string& message) override;
 
@@ -81,8 +74,6 @@ private:
 	bool ResEnterLobby(PlayerInfo& player) override;
 	bool ResLeaveLobby(int playerId) override;
 
-
-	bool ResBuyIcon(Icon& icon, int curMoney) override;
 
 	bool ResChangeEquipment(int inventoryId) override;
 

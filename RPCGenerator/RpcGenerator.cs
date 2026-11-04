@@ -164,7 +164,7 @@ class RpcGenerator
 
                     string localType = p.type.Replace("&", "").Trim();
 
-                    funcParam2 += "\t\t\t";
+                    funcParam2 += "\t\t";
                     funcParam2 += string.Format(RpcFormat.funcParam, localType, p.name);
                     funcParam2 += ";";
                     funcParam2 += Environment.NewLine;

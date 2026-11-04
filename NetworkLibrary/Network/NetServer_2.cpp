@@ -97,8 +97,7 @@
 //
 //		//Packet* packet = new Packet();
 //		Packet* packet = packetPool_.Alloc();
-//		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
-//		packet->Initialize(5, 1);
+//		packet->Initialize(sizeof(header));
 //
 //		// 헤더 + 바디 전부 디큐
 //		session->recvQueue_.Dequeue(packet->GetHeaderPtr(), sizeof(header) + bodySize);
@@ -118,7 +117,7 @@
 //			return;
 //		}
 //
-//		InterlockedIncrement(&recvMessageCount_);
+//		++recvMessageCount_;
 //
 //		this->OnRecv(session->sessionId_, packet);
 //
@@ -132,6 +131,7 @@
 //
 //	this->ReleaseSession(session);
 //}
+
 
 
 void NetServer::RecvPost(Session* session)
@@ -180,6 +180,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 {
 	//PRO(L"CompleteRecv");
 
+	/// 수정 필요 (지금 패킷 수신중이라 계속 쪼개져서 와서 이걸론 확인 불가)
 	if (numOfBytes >= PACKET_CAPACITY)
 	{
 		LOG_INFO(L"recvQueue full");
@@ -254,7 +255,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 			processedBytes += (sizeof(NET_HEADER) + bodySize);
 			remainBytes = totalBytes - processedBytes;
 
-			InterlockedIncrement(&recvMessageCount_);
+			++recvMessageCount_;
 
 			OnRecv(session->sessionId_, session->recvPacket_);
 
@@ -263,11 +264,9 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		else
 		{
 			Packet* packet = packetPool_.Alloc();
-			packet->InitRecvPacket(sizeof(NET_HEADER));
+			packet->Clear(sizeof(NET_HEADER));
 
 			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(NET_HEADER) + bodySize);
-
-			packet->MoveWritePos(sizeof(NET_HEADER) + bodySize);
 			packet->MoveReadPos(sizeof(NET_HEADER));
 
 			/// 디코딩
@@ -287,7 +286,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 			processedBytes += (sizeof(NET_HEADER) + bodySize);
 			remainBytes = totalBytes - processedBytes;
 
-			InterlockedIncrement(&recvMessageCount_);
+			++recvMessageCount_;
 
 			OnRecv(session->sessionId_, packet);
 
@@ -296,7 +295,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 	}
 
 	Packet* newPacket = packetPool_.Alloc();
-	newPacket->InitRecvPacket(sizeof(NET_HEADER));
+	newPacket->Clear(sizeof(NET_HEADER));
 
 	if (remainBytes > 0)
 	{
@@ -418,13 +417,17 @@ void NetServer::ReleaseSession(Session* session)
 		if (InterlockedCompareExchange(&session->ioCount_, 0x80000000, 0) != 0)
 			return;
 
-		closesocket(session->socket_);
+		if(!session->isDisconnected_)
+			closesocket(session->socket_);
 
 		int index = GetSessionIndex(session->sessionId_);
+		uint64_t sessionId = session->sessionId_;
+
 
 		sessionIndex_.Push(index);
 
-		this->OnRelease(session->sessionId_);
+		/// session 재사용 가능하므로 id값 자체로 전달해야함
+		this->OnRelease(sessionId);
 
 		//LOG_INFO(L"[NETWORK] session delete");
 

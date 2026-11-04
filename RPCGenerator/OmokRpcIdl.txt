@@ -13,7 +13,6 @@ ResPlayerRegister(RESPONSE_CODE code)									11
 
 ReqPlayerConnection(int userId)											12
 ResPlayerProfile(Player& player)										13
-ResPlayerIcons(std::vector<Icon>& icons)								14
 
 
 ReqEnterLobby()															15
@@ -25,9 +24,6 @@ ResLeaveLobby(int playerId)												17
 ReqChat(std::string& message)											30
 ResChat(int playerId, std::string& message)								31
 
-
-ReqBuyIcon()															50
-ResBuyIcon(Icon& icon, int curMoney)									51
 
 ReqChangeEquipment(int inventoryId)										52
 ResChangeEquipment(int inventoryId)										53

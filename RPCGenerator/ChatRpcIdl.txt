@@ -1,14 +1,14 @@
 
-ReqLogin(int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)			1
+CS_ReqLogin(int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)			1
 	
-ResLogin(byte status, int64_t playerId)																2
+SC_ResLogin(byte status, int64_t playerId)																2
 
-ReqSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)										3
+CS_ReqSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)										3
 
-ResSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)										4
+SC_ResSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)										4
 
-ReqMessage(int64_t playerId, Chat& chat)															5
+CS_ReqMessage(int64_t playerId, Chat& chat)															5
 
-ResMessage(int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)						6
+SC_ResMessage(int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)						6
 
-ReqHeartbeat()																						7
+CS_ReqHeartbeat()																						7

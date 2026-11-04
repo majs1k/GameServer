@@ -17,7 +17,7 @@
 #include "Repository/InventoryRepository.h"
 
 //#include "RPC/RpcServerProxy.h"
-#include "RPC/RpcServerStub.h"
+#include "RPC/RpcStub.h"
 
 //#include "Database/DbProxy.h"
 #include "Database/DbStub.h"
@@ -27,7 +27,7 @@ class RpcServerProxy;
 class DbProxy;
 
 
-class OmokServer : public LanServer, public RpcServerStub, public DbStub
+class OmokServer : public LanServer, public RpcStub, public DbStub
 {
 private:
 
@@ -38,9 +38,6 @@ public:
 
 	OmokServer();
 	~OmokServer();
-
-	void AttachProxy(RpcServerProxy* rpcProxy);
-	void AttachDb(Database* db);
 
 private:
 
@@ -59,10 +56,9 @@ private:
 
 private:
 
-	Database* db_;
+	Database db_;
 
 	LockFreeQueue<Message> dbReqQueue_;
-	LockFreeQueue<Message> dbResQueue_;
 
 	std::thread dbThread_;
 	static void DatabaseThread(OmokServer* server);
@@ -71,7 +67,6 @@ private:
 private:
 
 	void ProcessDbReqQueue();
-	void ProcessDbResQueue();
 
 
 	// ===================================================================================== //
@@ -121,10 +116,6 @@ private:
 
 	bool ReqChat(__int64 sessionId, std::string& message) override;
 
-	bool ReqBuyIcon(__int64 sessionId) override;
-
-	bool ReqChangeEquipment(__int64 sessionId, int inventoryId) override;
-
 	bool ReqStartMatch(__int64 sessionId) override;
 
 	bool ReqCancelMatch(__int64 sessionId) override;
@@ -157,11 +148,6 @@ private:
 	bool ReqPlayerConnectionDB(__int64 sessionId, int userId) override;
 
 	bool ResPlayerProfileDB(__int64 sessionId, Player& player) override;
-
-	bool ResPlayerIconsDB(__int64 sessionId, std::vector<Icon>& icons) override;
-
-
-	bool ReqBuyIconDB(__int64 sessionId, int playerId, int inventoryId, int iconId, int curMoney) override;
 
 	bool ReqChangeEquipmentDB(__int64 sessionId, int playerId, int inventoryId) override;
 

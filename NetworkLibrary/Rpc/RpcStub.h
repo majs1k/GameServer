@@ -5,13 +5,13 @@ class RpcStub
 {
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
+    bool PacketProc(uint64_t sessionId, Packet* packet);
     
-    virtual bool ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey);
-    virtual bool ResLogin(uint64_t sessionId, byte status, int64_t playerId);
-    virtual bool ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
-    virtual bool ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
-    virtual bool ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat);
-    virtual bool ResMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat);
-    virtual bool ReqHeartbeat(uint64_t sessionId);
+    virtual bool CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey);
+    virtual bool SC_ResLogin(uint64_t sessionId, byte status, int64_t playerId);
+    virtual bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
+    virtual bool SC_ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
+    virtual bool CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat);
+    virtual bool SC_ResMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat);
+    virtual bool CS_ReqHeartbeat(uint64_t sessionId);
 };

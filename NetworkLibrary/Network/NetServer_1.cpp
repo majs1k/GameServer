@@ -22,7 +22,7 @@ NetServer::Session::~Session()
 }
 
 
-void NetServer::Session::Initialize(SOCKET socket, std::string ip, int port, uint64_t id)
+void NetServer::Session::Initialize(SOCKET socket, std::string& ip, int port, uint64_t id)
 {
 	socket_ = socket;
 	sessionId_ = id;
@@ -34,7 +34,7 @@ void NetServer::Session::Initialize(SOCKET socket, std::string ip, int port, uin
 	sendPostQueue_.Clear();
 
 	//recvQueue_.Clear();
-	recvPacket_->InitRecvPacket(sizeof(NET_HEADER));
+	recvPacket_->Clear(sizeof(NET_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
 	recvOverlapped_.type = IO_TYPE::RECV;
@@ -42,6 +42,8 @@ void NetServer::Session::Initialize(SOCKET socket, std::string ip, int port, uin
 	// 초기화시 참조 카운트를 1로 시작
 	ioCount_ = 1;
 	sendPending_ = false;
+
+	isDisconnected_ = false;
 }
 
 NetServer::NetServer()
@@ -182,6 +184,8 @@ bool NetServer::Disconnect(uint64_t sessionId)
 {
 	Session* session = sessions[GetSessionIndex(sessionId)];
 
+	session->isDisconnected_ = true;
+
 	closesocket(session->socket_);
 
 	return true;
@@ -217,11 +221,14 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		packet->Encoding();
 	}
 
+
+
 	/// char* 링버퍼 용도
 	//session->sendQueue_.Enqueue(packet->GetBufferPtr(), packet->TotalUseSize());
 	//delete packet;
 
 	/// Packet* 링버퍼 용도
+	packet->AddRef();
 	session->sendQueue_.Enqueue(packet);
 
 	if (session->sendQueue_.Size() > 2000)
@@ -231,7 +238,7 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		return false;
 	}
 
-	InterlockedIncrement(&sendMessageCount_);
+	++sendMessageCount_;
 
 	this->SendPost(session);
 
@@ -265,10 +272,10 @@ unsigned int __stdcall NetServer::AcceptThread(void* param)
 			continue;
 		}
 
-		InterlockedIncrement(&server->acceptCount_);
+		++server->acceptCount_;
 		server->acceptCountTotal_++;
 
-		CHAR str[16];
+		char str[16];
 		InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
 		std::string ip = str;
 		int port = ntohs(clientAddr.sin_port);
@@ -398,33 +405,6 @@ unsigned int __stdcall NetServer::WorkerThread(void* param)
 	}
 
 	return 0;
-}
-
-void NetServer::Monitoring()
-{
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	// 콘솔창 커서 숨기기
-	CONSOLE_CURSOR_INFO cursorInfo;
-	GetConsoleCursorInfo(hConsole, &cursorInfo);
-
-	cursorInfo.bVisible = FALSE;
-	SetConsoleCursorInfo(hConsole, &cursorInfo);
-
-	LONG acceptTps = InterlockedExchange(&acceptCount_, 0);
-	LONG recvMessageTps = InterlockedExchange(&recvMessageCount_, 0);
-	LONG sendMessageTps = InterlockedExchange(&sendMessageCount_, 0);
-
-	//system("cls");
-
-	printf("=====================\n");
-	printf(" SERVER  MONITORING\n");
-	printf("=====================\n\n");
-
-	printf("Acpt TPS : %d\n", acceptTps);
-	printf("Acpt Total : %d\n", acceptCountTotal_);
-	printf("Recv TPS : %d\n", recvMessageTps);
-	printf("Send TPS : %d\n\n", sendMessageTps);
 }
 
 // ===================================================================

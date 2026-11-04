@@ -12,12 +12,23 @@ OmokServer::OmokServer()
 
 	dbThread_ = std::thread(DatabaseThread, this);
 
-	g_DbProxy.dbReqQueue_ = &dbReqQueue_;
-	g_DbProxy.dbResQueue_ = &dbResQueue_;
 
 	matchMaker_.Initialize(&roomManager_);
 
 	roomManager_.SetPlayerManager(&playerManager_);
+
+
+	db_.Connect(config.dbHost, config.dbUser, config.dbPassword, config.dbSchema);
+
+
+	g_RpcProxy->server_ = this;
+
+	g_DbProxy.dbReqQueue_ = &dbReqQueue_;
+
+
+	userRepository_.Initialize(&db_);
+	playerRepository_.Initialize(&db_);
+	inventoryRepository_.Initialize(&db_);
 }
 
 OmokServer::~OmokServer()
@@ -25,23 +36,9 @@ OmokServer::~OmokServer()
 	logicThread_.join();
 }
 
-void OmokServer::AttachProxy(RpcServerProxy* rpcProxy)
-{
-	rpcProxy->server_ = this;
-}
-
-void OmokServer::AttachDb(Database* db)
-{
-	db_ = db;
-
-	userRepository_.Initialize(db_);
-	playerRepository_.Initialize(db_);
-	inventoryRepository_.Initialize(db_);
-}
-
 bool OmokServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (SessionCount() >= SessionMax())
+	if (sessionCount_ >= sessionMax_)
 	{
 		LOG(L"[Network] session limit over");
 
@@ -82,6 +79,8 @@ void OmokServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	// 로직 스레드에서 패킷 처리
 	logicThreadMQ_.Enqueue({ sessionId, packet });
+
+
 }
 
 void OmokServer::LogicThread(OmokServer* server)
@@ -98,86 +97,7 @@ void OmokServer::LogicThread(OmokServer* server)
 	}
 }
 
-void OmokServer::ProcessMQ()
-{
-	while (1)
-	{
-		Message message;
-		bool ret = logicThreadMQ_.Dequeue(message);
-
-		if (ret == false)
-			return;
-
-		uint64_t sessionId = message.SessionId();
-		Packet* packet = message.Packet();
-
-		// 함수의 인자 자료형 주의
-		if (!PacketProc(sessionId, packet))
-		{
-			//Disconnect(sessionId);
-
-			return;
-		}
-
-		packet->Free();
-	}
-}
-
 void OmokServer::Update()
 {
 	roomManager_.Update();
-}
-
-
-// ----------------------------------------------------- //
-
-void OmokServer::DatabaseThread(OmokServer* server)
-{
-	while (!server->shutdown_)
-	{
-		server->ProcessDbReqQueue();
-
-		//TODO: 삭제
-		Sleep(10);
-	}
-}
-
-void OmokServer::ProcessDbReqQueue()
-{
-	while (1)
-	{
-		Message message;
-
-		bool ret = dbReqQueue_.Pop(message);
-
-		if (ret == false)
-			return;
-
-		uint64_t sessionId = message.SessionId();
-		Packet* packet = message.Packet();
-
-		DbPacketProc(sessionId, packet);
-
-		packet->Free();
-	}
-}
-
-void OmokServer::ProcessDbResQueue()
-{
-	while (1)
-	{
-		Message message;
-
-		bool ret = dbResQueue_.Pop(message);
-
-		if (ret == false)
-			return;
-
-		uint64_t sessionId = message.SessionId();
-		Packet* packet = message.Packet();
-
-		DbPacketProc(sessionId, packet);
-
-		packet->Free();
-	}
 }

@@ -1,39 +1,8 @@
 #include "OmokClient.h"
 #include "Utils/Packet.h"
 
-#include "RPC/RpcClientProxy.h"
+#include "RPC/RpcProxy.h"
 #include "RpcModule.h"
-
-
-void OmokClient::AttachProxy(RpcClientProxy* rpcProxy)
-{
-	rpcProxy->client_ = this;
-}
-
-void OmokClient::OnConnect()
-{
-
-}
-
-void OmokClient::OnRelease()
-{
-
-}
-
-void OmokClient::OnRecv(Packet* packet)
-{
-	__int64 sessionId = 0;
-
-	// 함수의 인자 자료형 주의
-	if (!PacketProc(packet))
-	{
-		//disconnect(sessionId);
-
-		return;
-	}
-
-	delete packet;
-}
 
 
 //------------------------------------------------------------------------------------------------------//
@@ -132,16 +101,6 @@ bool OmokClient::ResPlayerProfile(Player& player)
 	}
 }
 
-bool OmokClient::ResPlayerIcons(std::vector<Icon>& icons)
-{
-	for (auto& i : icons)
-	{
-		myPlayer_.icons_.push_back(i);
-	}
-
-	return true;
-}
-
 bool OmokClient::ResChat(int playerId, std::string& message)
 {
 	if (playerMap_.count(playerId) == 0)
@@ -172,15 +131,6 @@ bool OmokClient::ResEnterLobby(PlayerInfo& player)
 bool OmokClient::ResLeaveLobby(int playerId)
 {
 	playerMap_.erase(playerId);
-
-	return true;
-}
-
-bool OmokClient::ResBuyIcon(Icon& icon, int curMoney)
-{
-	myPlayer_.money_ = curMoney;
-
-	myPlayer_.icons_.push_back(icon);
 
 	return true;
 }

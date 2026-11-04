@@ -14,14 +14,9 @@ int main()
 
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 
-	Database db;
 
-	db.Connect(config.dbHost, config.dbUser, config.dbPassword, config.dbSchema);
 
 	OmokServer server;
-
-	server.AttachProxy(&g_RpcProxy);
-	server.AttachDb(&db);
 
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);
 

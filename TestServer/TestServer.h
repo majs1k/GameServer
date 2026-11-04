@@ -11,7 +11,7 @@ class TestServer : public LanServer
 private:
 
 	std::thread logicThread_;
-	LockFreeQueue<std::pair<uint64_t, Packet*>> logicThreadMQ_;
+	LockFreeQueue<std::pair<uint64_t, Packet*>> messageQueue_;
 
 public:
 
@@ -27,6 +27,7 @@ private:
 
 	static void LogicThread(TestServer* server);
 
-	void PacketProc();
+	void ProcessMessageQueue();
+	bool PacketProc(uint64_t sessionId, Packet* packet);
 	void Update();
 };

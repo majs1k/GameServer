@@ -4,39 +4,54 @@
 #include "Utils/Logger.h"
 
 
-bool ChatServer::ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
 {
 	Player* player = sessionIdToPlayer_[sessionId];
 
-	// 플레이어 중복 접속 차단
+	// 이미 로그인 완료 시 실패 패킷만 보냄
+	if (player->isLogin_)
+	{
+		g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::FAIL, playerId);
+
+		return true;
+	}
+
+	// 중복 접속 시 기존 접속 종료
 	if (playerMap_.count(playerId))
 	{
-		g_RpcProxy.ResLogin(sessionId, ELOGIN::FAIL, playerId);
+		Player* alreadyLoginedPlayer = playerMap_[playerId];
 
-		Disconnect(sessionId);
+		alreadyLoginedPlayer->isLogin_ = false;
+		playerCount_--;
 
-		// 기존 연결도 종료
-		Disconnect(playerMap_[playerId]->sessionId_);
+		// 반드시 여기서 삭제
+		playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
-		return false;
+		// Disconnect 이후론 로직 없어야함
+		Disconnect(alreadyLoginedPlayer->sessionId_);
 	}
 
 	player->lastRecvTime_ = GetTickCount();
 
 	// TODO: 세션 키 인증
 
+	auto iter = sessionIdToPlayer_.find(sessionId);
+	if (iter == sessionIdToPlayer_.end())
+	{
+		__debugbreak();
+	}
+
 	player->Initialize(sessionId, playerId, loginId, nickname);
 	playerMap_.insert({ playerId, player });
 
-	// 섹터 리스트에 삽입
-	sector_[player->sectorX_][player->sectorY_].push_back(player);
+	playerCount_++;
 
-	g_RpcProxy.ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
+	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
 
 	return true;
 }
 
-bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
+bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
 {
 	Player* player = sessionIdToPlayer_[sessionId];
 
@@ -47,7 +62,8 @@ bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sect
 
 	if (playerId != player->playerId_)
 	{
-		__debugbreak();
+		//__debugbreak();
+		//LOG(L"reqmessage playerid error");
 
 		return false;
 	}
@@ -62,7 +78,6 @@ bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sect
 	if (!player->isInitSector_)
 	{
 		player->isInitSector_ = true;
-
 	}
 	else
 	{
@@ -71,19 +86,28 @@ bool ChatServer::ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sect
 		//{
 		//	return false;
 		//}
+
+		/// 디버깅용
+		if (player == nullptr)
+			__debugbreak();
+
+		sector_[player->sectorY_][player->sectorX_].remove(player);
 	}
 
-	sector_[player->sectorX_][player->sectorY_].remove(player);
 
 	player->sectorX_ = sectorX;
 	player->sectorY_ = sectorY;
 
-	sector_[player->sectorX_][player->sectorY_].push_back(player);
+	/// 디버깅용
+	if (player == nullptr)
+		__debugbreak();
 
-	g_RpcProxy.ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
+	sector_[player->sectorY_][player->sectorX_].push_back(player);
+
+	g_RpcProxy.SC_ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
 }
 
-bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
+bool ChatServer::CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
 	Player* player = sessionIdToPlayer_[sessionId];
 
@@ -102,7 +126,8 @@ bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	if (playerId != player->playerId_)
 	{
-		__debugbreak();
+		//__debugbreak();
+		//LOG(L"reqmessage playerid error");
 
 		return false;
 	}
@@ -144,21 +169,24 @@ bool ChatServer::ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
 			if (sectorNX < 0 || sectorNX >= SECTOR_WIDTH || sectorNY < 0 || sectorNY >= SECTOR_HEIGHT)
 				continue;
 
-			for (auto& target : sector_[sectorNX][sectorNY])
+			for (auto& target : sector_[sectorNY][sectorNX])
 			{
 				//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
-				sessionIds.push_back(target->sessionId_);
+				if (target->isLogin_)
+				{
+					sessionIds.push_back(target->sessionId_);
+				}
 			}
 		}
 	}
 
 	/// packet 재활용
-	g_RpcProxy.ResMessage(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
+	g_RpcProxy.SC_ResMessage(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
 
 	return true;
 }
 
-bool ChatServer::ReqHeartbeat(uint64_t sessionId)
+bool ChatServer::CS_ReqHeartbeat(uint64_t sessionId)
 {
 	Player* player = sessionIdToPlayer_[sessionId];
 

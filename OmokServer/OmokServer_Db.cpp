@@ -70,14 +70,6 @@ bool OmokServer::ReqPlayerConnectionDB(__int64 sessionId, int userId)
 
 	g_DbProxy.ResPlayerProfileDB(sessionId, p);
 
-
-	std::vector<Icon> icons;
-
-	inventoryRepository_.FindIconsByPlayerId(p.playerId_, icons);
-
-	g_DbProxy.ResPlayerIconsDB(sessionId, icons);
-
-
 	return true;
 }
 
@@ -113,42 +105,6 @@ bool OmokServer::ResPlayerProfileDB(__int64 sessionId, Player& player)
 	return true;
 }
 
-bool OmokServer::ResPlayerIconsDB(__int64 sessionId, std::vector<Icon>& icons)
-{
-	Player* p = playerManager_.GetPlayerBySessionId(sessionId);
-
-	if (p == nullptr)
-		return true;
-
-	// 아이콘 등록
-	for (auto& i : icons)
-	{
-		p->icons_.push_back(i);
-	}
-
-	g_RpcProxy.ResPlayerIcons(sessionId, icons);
-
-	return true;
-}
-
-bool OmokServer::ReqBuyIconDB(__int64 sessionId, int playerId, int inventoryId, int iconId, int curMoney)
-{
-	db_->BeginTransaction();
-
-	playerRepository_.UpdateMoney(playerId, curMoney);
-	inventoryRepository_.CreateIcon(playerId, inventoryId, iconId);
-
-	db_->Commit();
-
-	return true;
-}
-
-bool OmokServer::ReqChangeEquipmentDB(__int64 sessionId, int playerId, int inventoryId)
-{
-	playerRepository_.UpdateProfileIcon(playerId, inventoryId);
-
-	return true;
-}
 
 bool OmokServer::ReqGameResultDB(__int64 sessionId, int winnerId, int loserId)
 {

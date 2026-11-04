@@ -72,7 +72,6 @@ class Packet;
 
 inline MemoryPoolTls<Packet> packetPool_;
 
-
 class Packet
 {
 private:
@@ -103,7 +102,7 @@ public:
 		delete[] buffer_;
 	}
 
-	void Initialize(int headerSize, int count)
+	void Initialize(int headerSize)
 	{
 		writePos_ = HEADER_CAPACITY;
 		readPos_ = HEADER_CAPACITY;
@@ -111,10 +110,10 @@ public:
 		headerSize_ = headerSize;
 		isError_ = false;
 		isEncoding_ = false;
-		refCount_ = count;
+		refCount_ = 1;
 	}
 
-	void InitRecvPacket(int headerSize)
+	void Clear(int headerSize)
 	{
 		writePos_ = HEADER_CAPACITY - headerSize;
 		readPos_ = HEADER_CAPACITY - headerSize;

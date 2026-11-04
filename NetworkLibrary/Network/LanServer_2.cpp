@@ -218,7 +218,7 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 			processedBytes += (sizeof(LAN_HEADER) + bodySize);
 			remainBytes = totalBytes - processedBytes;
 
-			InterlockedIncrement(&recvMessageCount_);
+			++recvMessageCount_;
 
 			OnRecv(session->sessionId_, session->recvPacket_);
 
@@ -227,17 +227,15 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 		else
 		{
 			Packet* packet = packetPool_.Alloc();
-			packet->InitRecvPacket(sizeof(LAN_HEADER));
+			packet->Clear(sizeof(LAN_HEADER));
 
 			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(LAN_HEADER) + bodySize);
-
-			packet->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
 			packet->MoveReadPos(sizeof(LAN_HEADER) );
 
 			processedBytes += (sizeof(LAN_HEADER) + bodySize);
 			remainBytes = totalBytes - processedBytes;
 
-			InterlockedIncrement(&recvMessageCount_);
+			++recvMessageCount_;
 
 			OnRecv(session->sessionId_, packet);
 
@@ -246,7 +244,7 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 	}
 
 	Packet* newPacket = packetPool_.Alloc();
-	newPacket->InitRecvPacket(sizeof(LAN_HEADER));
+	newPacket->Clear(sizeof(LAN_HEADER));
 
 	if (remainBytes > 0)
 		newPacket->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, remainBytes);
@@ -367,10 +365,12 @@ void LanServer::ReleaseSession(Session* session)
 		closesocket(session->socket_);
 
 		int index = GetSessionIndex(session->sessionId_);
+		int sessionId = session->sessionId_;
+
 
 		sessionIndex_.Push(index);
 
-		this->OnRelease(session->sessionId_);
+		this->OnRelease(sessionId);
 
 		//LOG_INFO(L"[NETWORK] session delete");
 

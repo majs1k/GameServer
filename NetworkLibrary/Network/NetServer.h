@@ -4,6 +4,7 @@
 //#include <unordered_map>
 //#include <stack>
 //#include <mutex>
+#include <atomic>
 #include <WinSock2.h>
 //#include <Windows.h>
 
@@ -58,12 +59,14 @@ private:
 		LONG ioCount_;
 		LONG sendPending_;
 
+		bool isDisconnected_ = false;
+
 		//std::recursive_mutex sessionLock_;
 
 		Session();
 		~Session();
 
-		void Initialize(SOCKET socket, std::string ip, int port, uint64_t id);
+		void Initialize(SOCKET socket, std::string& ip, int port, uint64_t id);
 	};
 
 private:
@@ -123,14 +126,11 @@ protected:
 
 	bool shutdown_ = false;
 
-	LONG acceptCount_ = 0;
-	LONG acceptCountTotal_ = 0;
-	LONG recvMessageCount_ = 0;
-	LONG sendMessageCount_ = 0;
+	std::atomic<int> acceptCount_ = 0;
+	std::atomic<int> recvMessageCount_ = 0;
+	std::atomic<int> sendMessageCount_ = 0;
 
-public:
-
-	void Monitoring();
+	int acceptCountTotal_ = 0;
 
 
 private:
@@ -145,6 +145,8 @@ private:
 	void CompleteSend(Session* session, int numOfBytes);
 
 	void ReleaseSession(Session* session);
+
+protected:
 
 	uint64_t AllocSession();
 	uint64_t GetSessionId(uint64_t sessionId);
