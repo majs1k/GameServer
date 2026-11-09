@@ -13,12 +13,12 @@
 
 NetServer::Session::Session()
 {
-	recvPacket_ = packetPool_.Alloc();
+	//recvPacket_ = packetPool_.Alloc();
 }
 
 NetServer::Session::~Session()
 {
-	packetPool_.Free(recvPacket_);
+	//packetPool_.Free(recvPacket_);
 }
 
 
@@ -33,8 +33,8 @@ void NetServer::Session::Initialize(SOCKET socket, std::string& ip, int port, ui
 	sendQueue_.Clear();
 	sendPostQueue_.Clear();
 
-	//recvQueue_.Clear();
-	recvPacket_->Clear(sizeof(NET_HEADER));
+	recvQueue_.Clear();
+	//recvPacket_->Clear(sizeof(NET_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
 	recvOverlapped_.type = IO_TYPE::RECV;
@@ -42,8 +42,6 @@ void NetServer::Session::Initialize(SOCKET socket, std::string& ip, int port, ui
 	// 초기화시 참조 카운트를 1로 시작
 	ioCount_ = 1;
 	sendPending_ = false;
-
-	isDisconnected_ = false;
 }
 
 NetServer::NetServer()
@@ -123,7 +121,7 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	if (bind(listenSocket_, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 		wprintf(L"bind() error");
 
-	if (listen(listenSocket_, SOMAXCONN) == SOCKET_ERROR)
+	if (listen(listenSocket_, SOMAXCONN_HINT(65535)) == SOCKET_ERROR)
 		wprintf(L"listen() error");
 
 	hIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
@@ -180,13 +178,40 @@ void NetServer::Stop()
 	LOG_INFO(L"[NETWORK] server exit");
 }
 
+
 bool NetServer::Disconnect(uint64_t sessionId)
 {
 	Session* session = sessions[GetSessionIndex(sessionId)];
 
-	session->isDisconnected_ = true;
+	// 세션 보장용 카운트 증가
+	int count = InterlockedIncrement(&session->ioCount_);
 
-	closesocket(session->socket_);
+	if ((count >> 16) == 0x0001)
+	{
+		//ReleaseSession(session);
+
+		return false;
+	}
+
+	// 새로운 세션으로 잘못 얻었다면
+	if (session->sessionId_ != sessionId)
+	{
+		// 새로운 세션의 카운트 감소
+		ReleaseSession(session);
+
+		return false;
+	}
+
+
+
+	CancelIoEx((HANDLE)session->socket_, nullptr);
+	//closesocket(session->socket_);
+
+	disconnectCountTotal_++;
+
+
+	// 세션 보장용 카운트 감소
+	ReleaseSession(session);
 
 	return true;
 }
@@ -197,17 +222,19 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	Session* session = sessions[GetSessionIndex(sessionId)];
 
 	// 세션 보장용 카운트 증가
-	InterlockedIncrement(&session->ioCount_);
+	int count = InterlockedIncrement(&session->ioCount_);
 
-	if (session->sessionId_ != sessionId)
+	if ((count >> 16) == 0x0001)
 	{
-		ReleaseSession(session);
+		//ReleaseSession(session);
 
 		return false;
 	}
 
-	if (session->ioCount_ < 0)
+	// 새로운 세션으로 잘못 얻었다면
+	if (session->sessionId_ != sessionId)
 	{
+		// 새로운 세션의 카운트 감소
 		ReleaseSession(session);
 
 		return false;
@@ -238,9 +265,9 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		return false;
 	}
 
-	++sendMessageCount_;
+	sendMessageCount_++;
 
-	this->SendPost(session);
+	SendPost(session);
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -272,7 +299,7 @@ unsigned int __stdcall NetServer::AcceptThread(void* param)
 			continue;
 		}
 
-		++server->acceptCount_;
+		server->acceptCount_++;
 		server->acceptCountTotal_++;
 
 		char str[16];
@@ -284,6 +311,9 @@ unsigned int __stdcall NetServer::AcceptThread(void* param)
 		if (!server->OnConnectionRequest(ip, port))
 		{
 			closesocket(clientSock);
+
+			server->disconnectCountTotal_++;
+
 			continue;
 		}
 
@@ -341,7 +371,7 @@ unsigned int __stdcall NetServer::WorkerThread(void* param)
 			if (overlapped != nullptr)
 			{
 				// 64 상대가 연결을 끊었을때
-				// 1236 clientSock 닫았을때
+				// 1236 내가 연결을 끊었을때 (closesocket)
 				if (error == ERROR_NETNAME_DELETED || error == ERROR_CONNECTION_ABORTED)
 				{
 					server->ReleaseSession(session);
@@ -354,6 +384,13 @@ unsigned int __stdcall NetServer::WorkerThread(void* param)
 				else if (error == ERROR_SEM_TIMEOUT)
 				{
 					//__debugbreak();
+
+					continue;
+				}
+				// 995 CancelIoEx로 작업 중단
+				else if (error == WSA_OPERATION_ABORTED)
+				{
+					server->ReleaseSession(session);
 
 					continue;
 				}

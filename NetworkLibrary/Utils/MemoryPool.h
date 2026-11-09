@@ -34,7 +34,7 @@
 //#define DEBUG_MEMORYPOOL
 
 template <class T>
-class TMemoryPool
+class MemoryPool
 {
 private:
 	struct Node
@@ -74,7 +74,7 @@ private:
 #endif
 
 public:
-	TMemoryPool(int size, bool isPlacementNew = false)
+	MemoryPool(int size = 200, bool isPlacementNew = false)
 	{
 		top_ = nullptr;
 		size_ = size;
@@ -95,7 +95,7 @@ public:
 		}
 	}
 
-	~TMemoryPool()
+	~MemoryPool()
 	{
 		Node* cur = top_;
 

@@ -1,0 +1,191 @@
+#include "ChatServer.h"
+#include "RpcModule.h"
+#include "Utils/Logger.h"
+#include "Utils/Profiler.h"
+
+
+void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname)
+{
+	playerId_ = playerId;
+	loginId_ = loginId;
+
+	nickname_ = nickname;
+
+	isLogin_ = true;
+	//isInitSector_ = false;
+
+	//lastChatTime_ = 0;
+	//curChatCount_ = 0;
+}
+
+void ChatServer::Player::Initialize(uint64_t sessionId)
+{
+	sessionId_ = sessionId;
+
+	isLogin_ = false;
+	isInitSector_ = false;
+}
+
+
+ChatServer::ChatServer()
+{
+	g_RpcProxy.server_ = this;
+
+	for (int i = 0; i < MAP_COUNT; i++)
+	{
+		logicThread_[i] = std::thread(LogicThread, this, i);
+	}
+
+	schedulerThread_ = std::thread(SchedulerThread, this);
+
+	monitorThread_ = std::thread(MonitorThread, this);
+}
+
+ChatServer::~ChatServer()
+{
+	for (int i = 0; i < MAP_COUNT; i++)
+	{
+		logicThread_[i].join();
+	}
+
+	schedulerThread_.join();
+
+	monitorThread_.join();
+}
+
+bool ChatServer::OnConnectionRequest(const std::string& ip, int port)
+{
+	if (sessionCount_ >= sessionMax_)
+	{
+		LOG(L"[Network] session limit over");
+
+		return false;
+	}
+
+	// TODO: 외부 ip당 접속자 제한 등..
+
+	return true;
+}
+
+void ChatServer::OnAccept(uint64_t sessionId)
+{
+	CreatePlayer(sessionId);
+}
+
+void ChatServer::OnRelease(uint64_t sessionId)
+{
+	RemovePlayer(sessionId);
+}
+
+void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
+{
+	mapIdLock_.lock();
+
+	auto it = sessionIdToMapId_.find(sessionId);
+
+	if (it == sessionIdToMapId_.end())
+	{
+		mapIdLock_.unlock();
+
+		return;
+	}
+
+	int mapId = it->second;
+
+	mapIdLock_.unlock();
+
+
+
+	Message* message = messagePool_.Alloc();
+	//Message* message = new Message();
+
+	message->Initialize(sessionId, packet, CS_NETWORK_PACKET);
+
+	packet->AddRef();
+
+	messageQueue_[mapId].Enqueue(message);
+}
+
+void ChatServer::LogicThread(ChatServer* server, int mapId)
+{
+	tls_MapId_ = mapId;
+
+	while (!server->shutdown_)
+	{
+		server->ProcessMessageQueue();
+	}
+}
+
+void ChatServer::SchedulerThread(ChatServer* server)
+{
+	int64_t cnt = 0;
+
+	while (!server->shutdown_)
+	{
+		if (cnt % 10 == 0)
+			server->CheckTimeout();
+
+		cnt++;
+
+		Sleep(1'000);
+	}
+}
+
+void ChatServer::MonitorThread(ChatServer* server)
+{
+	while (!server->shutdown_)
+	{
+		server->Monitoring();
+
+		Sleep(1'000);
+	}
+}
+
+
+void ChatServer::Monitoring()
+{
+	int acceptCount = acceptCount_.exchange(0);
+
+	int procMessgaeCount = procMessageCount_.exchange(0);
+	int recvMessageCount = recvMessageCount_.exchange(0);
+	int sendMessageCount = sendMessageCount_.exchange(0);
+
+	int messageCount_SS_CreatePlayer = messageCount_SS_CreatePlayer_.exchange(0);
+	int messageCount_SS_RemovePlayer = messageCount_SS_RemovePlayer_.exchange(0);
+	int messageCount_NETWORK_PACKET = messageCount_CS_NETWORK_PACKET_.exchange(0);
+
+	int messageCount_CS_ReqLogin = messageCount_CS_ReqLogin_.exchange(0);
+	int messageCount_CS_ReqSectorMove = messageCount_CS_ReqSectorMove_.exchange(0);
+	int messageCount_CS_ReqChat = messageCount_CS_ReqChat_.exchange(0);
+
+
+	printf("=========================\n");
+	printf("=========================\n\n");
+
+	printf("Session	   : %d\n", sessionCount_);
+	printf("Player	   : %d\n\n", playerCount_);
+
+	printf("Accept     : %d\n", acceptCountTotal_);
+	printf("Discon     : %d\n", disconnectCountTotal_);
+	printf("DupLogin   : %d\n\n", dupLoginCountTotal_.load());
+
+	printf("Accept TPS : %d\n", acceptCount);
+
+	//printf("MessageQ   : %d\n\n", messageQueue_.Size());
+
+	printf("Update TPS : %d\n", procMessgaeCount);
+	printf("Recv   TPS : %d\n", recvMessageCount);
+	printf("Send   TPS : %d\n\n", sendMessageCount);
+
+	printf("Create     : %d\n", messageCount_SS_CreatePlayer);
+	printf("Remove     : %d\n\n", messageCount_SS_RemovePlayer);
+
+	printf("Network    : %d\n", messageCount_NETWORK_PACKET);
+	printf("Login      : %d\n", messageCount_CS_ReqLogin);
+	printf("Move       : %d\n", messageCount_CS_ReqSectorMove);
+	printf("Chat       : %d\n\n", messageCount_CS_ReqChat);
+
+	printf("Packet  Pool : %d\n", packetPool_.Capacity());
+	printf("Message Pool : %d\n", messagePool_.Capacity());
+	printf("Player  Pool : %d\n\n", playerPool_.Capacity());
+}

@@ -133,7 +133,7 @@ public:
 	void BeginProfile(const std::wstring& name)
 	{
 		// Profiler 리스트에서 들고 오거나, 없다면 리스트에 추가
-		ProfileData* profile = this->Find(name);
+		ProfileData* profile = Find(name);
 
 		if (profile == nullptr)
 		{
@@ -150,7 +150,7 @@ public:
 		LARGE_INTEGER endTime;
 		QueryPerformanceCounter(&endTime);
 
-		ProfileData* profile = this->Find(name);
+		ProfileData* profile = Find(name);
 
 		if ((endTime.QuadPart - profile->startTime_.QuadPart) < 0)
 		{

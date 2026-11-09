@@ -54,7 +54,7 @@ void RpcProxy::SC_ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sec
     packet->Free();
 }
 
-void RpcProxy::CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
+void RpcProxy::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -67,7 +67,7 @@ void RpcProxy::CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
     packet->Free();
 }
 
-void RpcProxy::SC_ResMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+void RpcProxy::SC_ResChat(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -158,7 +158,7 @@ void RpcProxy::SC_ResSectorMove(std::vector<uint64_t>& sessionIds, int64_t playe
     packet->Free();
 }
 
-void RpcProxy::CS_ReqMessage(std::vector<uint64_t>& sessionIds, int64_t playerId, Chat& chat)
+void RpcProxy::CS_ReqChat(std::vector<uint64_t>& sessionIds, int64_t playerId, Chat& chat)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -174,7 +174,7 @@ void RpcProxy::CS_ReqMessage(std::vector<uint64_t>& sessionIds, int64_t playerId
     packet->Free();
 }
 
-void RpcProxy::SC_ResMessage(std::vector<uint64_t>& sessionIds, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+void RpcProxy::SC_ResChat(std::vector<uint64_t>& sessionIds, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));

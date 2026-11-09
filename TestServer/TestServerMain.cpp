@@ -20,7 +20,11 @@ int main()
 
 	while (1)
 	{
-		Sleep(1000);
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x0001)
+		{
+			__debugbreak();
+			break;
+		}
 
 		//if (GetAsyncKeyState('X') & 0x0001)
 		//{

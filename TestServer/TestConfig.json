@@ -1,7 +1,7 @@
 {
   "IP": "0.0.0.0",
   "Port": 6000,
-  "SessionMax": 200,
+  "SessionMax": 500,
   "ConcurrentCount": 8,
   "WorkerCount": 8,
 

@@ -18,12 +18,8 @@ rpc 방식에서 sessionId vector 보내는 방식?
 
 packet iserror 체크
 
-delete this; -> 위험한 이유? 해결방안?
-
-
 packet 생성코드 -> rpc로 추상화?
 라이브러리에서 disconnect 사용에 대해서?
 
 구조체 방식에선 가변인자 처리방식?
-
 ```

@@ -165,7 +165,12 @@ public:
 				InterlockedCompareExchange64(reinterpret_cast<LONG64*>(&rear_), GetPtr(rear)->next_, rear);
 			}
 
-			if (GetPtr(frontPtr->next_) == 0)
+			// 잘못된 코드 GetPtr(next)가 0인데도 else문 실행 가능
+			//if (GetPtr(frontPtr->next_) == 0)
+			//{
+			//	return false;
+			//}
+			if (GetPtr(next) == 0)
 			{
 				return false;
 			}

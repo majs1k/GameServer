@@ -9,11 +9,15 @@
 TestServer::TestServer()
 {
 	logicThread_ = std::thread(LogicThread, this);
+
+	monitorThread_ = std::thread(monitorThread, this);
 }
 
 TestServer::~TestServer()
 {
 	logicThread_.join();
+
+	monitorThread_.join();
 }
 
 bool TestServer::OnConnectionRequest(const std::string& ip, int port)
@@ -38,7 +42,9 @@ void TestServer::OnAccept(uint64_t sessionId)
 
 	*packet << data;
 
-	this->SendPacket(sessionId, packet);
+	SendPacket(sessionId, packet);
+
+	packet->Free();
 }
 
 void TestServer::OnRelease(uint64_t sessionId)
@@ -55,8 +61,13 @@ void TestServer::OnRecv(uint64_t sessionId, Packet* packet)
 	//}
 
 	/// 로직 스레드에서 패킷 처리
+	Message* message = messagePool_.Alloc();
+	//Message* message = new Message();
+
+	message->Initialize(sessionId, packet, 0);
+
 	packet->AddRef();
-	messageQueue_.Enqueue({ sessionId, packet });
+	messageQueue_.Enqueue(message);
 }
 
 void TestServer::LogicThread(TestServer* server)
@@ -64,10 +75,6 @@ void TestServer::LogicThread(TestServer* server)
 	while (!server->shutdown_)
 	{
 		server->ProcessMessageQueue();
-
-		server->Update();
-
-		TickController::Instance().Update();
 	}
 }
 
@@ -75,20 +82,26 @@ void TestServer::ProcessMessageQueue()
 {
 	while (1)
 	{
-		std::pair<uint64_t, Packet*> message;
+		Message* message;
 		bool ret = messageQueue_.Dequeue(message);
 
 		if (ret == false)
 			break;
 
-		auto [sessionId, packet] = message;
+		uint64_t sessionId = message->sessionId_;
+		Packet* packet = message->packet_;
+		ushort protocol = message->protocol_;
 
 		if (!PacketProc(sessionId, packet))
 		{
 			Disconnect(sessionId);
 		}
 
-		packet->Free();
+
+		if (packet != nullptr)
+			packet->Free();
+
+		messagePool_.Free(message);
 	}
 }
 
@@ -107,12 +120,49 @@ bool TestServer::PacketProc(uint64_t sessionId, Packet* packet)
 
 	*packet2 << data;
 
-	this->SendPacket(sessionId, packet2);
+	SendPacket(sessionId, packet2);
+
+	packet2->Free();
 
 	return true;
 }
 
-void TestServer::Update()
+void TestServer::monitorThread(TestServer* server)
 {
+	while (!server->shutdown_)
+	{
+		server->Monitoring();
 
+		Sleep(1'000);
+	}
+}
+
+void TestServer::Monitoring()
+{
+	int acceptCount = acceptCount_.exchange(0);
+
+	int recvMessageCount = recvMessageCount_.exchange(0);
+	int sendMessageCount = sendMessageCount_.exchange(0);
+
+
+	printf("=========================\n");
+	printf("=========================\n\n");
+
+	printf("Session	   : %d\n", sessionCount_);
+
+	printf("Accept     : %d\n", acceptCountTotal_);
+	printf("Discon     : %d\n", disconnectCountTotal_);
+	printf("Release    : %d\n\n", releaseCountTotal_.load());
+
+	printf("test    : %d\n\n", test_.load());
+
+	printf("Accept TPS : %d\n", acceptCount);
+
+	printf("MessageQ   : %d\n\n", messageQueue_.Size());
+
+	printf("Recv   TPS : %d\n", recvMessageCount);
+	printf("Send   TPS : %d\n\n", sendMessageCount);
+
+	printf("Packet  Pool : %d\n", packetPool_.Capacity());
+	printf("Message Pool : %d\n", messagePool_.Capacity());
 }

@@ -6,6 +6,7 @@
 #include "Network/NetServer.h"
 #include "Utils/Packet.h"
 #include "Utils/LockFreeQueue.h"
+#include "Utils/MemoryPool.h"
 
 #include "CommonProtocol.h"
 #include "RPC/RpcStub.h"
@@ -25,7 +26,7 @@ private:
 
 		bool isLogin_;
 		bool isInitSector_ ;
-		DWORD lastRecvTime_;
+		uint64_t lastRecvTime_;
 
 		// 0 ~ 49
 		unsigned short sectorX_;
@@ -34,7 +35,7 @@ private:
 		//unsigned int lastChatTime_;
 		//int curChatCount_;
 
-		void Initialize(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname);
+		void Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname);
 		void Initialize(uint64_t sessionId);
 	};
 
@@ -45,8 +46,6 @@ private:
 		Packet* packet_;
 		ushort protocol_;
 
-	public:
-
 		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
 		{
 			sessionId_ = sessionId;
@@ -55,15 +54,13 @@ private:
 		}
 	};
 
-	enum SS_PROTOCOL
+	enum PROTOCOL
 	{
-		NETWORK_PACKET = 0,
-		CREATE_PLAYER = 1,
-		REMOVE_PLAYER = 2,
-		CHECK_TIMEOUT = 3,
-		MONITORING = 4,
+		CS_NETWORK_PACKET = 0,
+		SS_CREATE_PLAYER = 1,
+		SS_REMOVE_PLAYER = 2,
+		SS_CHECK_TIMEOUT = 3,
 	};
-
 
 public:
 
@@ -79,33 +76,31 @@ private:
 
 private:
 
+	static void LogicThread(ChatServer* server);
+	static void SchedulerThread(ChatServer* server);
+	static void MonitorThread(ChatServer* server);
+
 	std::thread logicThread_;
 	std::thread schedulerThread_;
+	std::thread monitorThread_;
+
+
+	void Monitoring();
 
 	constexpr static int TIMEOUT_MS = 40'000;
-	
-	static void LogicThread(ChatServer* server);
-	static void TimeoutThread(ChatServer* server);
+
+	// ===================================================================================== //
+	// Message & Player
+	// ===================================================================================== //
+
+private:
 
 	MemoryPoolTls<Message> messagePool_;
-	MemoryPoolTls<Player> playerPool_;
 
 	LockFreeQueue<Message*> messageQueue_;
 
-	void CreatePlayer(uint64_t sessionId);
-	void RemovePlayer(uint64_t sessionId);
-	
-	void CheckTimeout();
-	void Monitoring();
-
-	
-	void ProcessMessageQueue();
-	std::atomic<int> procMessageCount_ = 0;
-
-	int test = 0;
-
-
-private:
+	//MemoryPoolTls<Player> playerPool_;
+	MemoryPool<Player> playerPool_;
 
 	// if(map[x] == ...) 로직 금지 (새 원소 만듦)
 	std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
@@ -121,14 +116,28 @@ private:
 	constexpr static int dx[3] = { 0, 1, -1 };
 	constexpr static int dy[3] = { 0, 1, -1 };
 
+	// ===================================================================================== //
+	// Protocol
+	// ===================================================================================== //
 
+private:
+
+	void ProcessMessageQueue();
+
+	void CreatePlayer(uint64_t sessionId);
+	void RemovePlayer(uint64_t sessionId);
+	void CheckTimeout();
 
 	void SS_CreatePlayer(uint64_t sessionId);
 	void SS_RemovePlayer(uint64_t sessionId);
-
 	void SS_CheckTimeout(uint64_t sessionId);
 
-	void SS_Monitoring();
+
+	std::atomic<int> procMessageCount_ = 0;
+
+	std::atomic<int> messageCount_SS_CreatePlayer_ = 0;
+	std::atomic<int> messageCount_SS_RemovePlayer_ = 0;
+
 
 	// ===================================================================================== //
 	// RPC
@@ -137,10 +146,17 @@ private:
 private:
 
 	bool CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey) override;
-
 	bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
-
-	bool CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat) override;
-
+	bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 	bool CS_ReqHeartbeat(uint64_t sessionId) override;
+
+
+	std::atomic<int> messageCount_CS_NETWORK_PACKET_ = 0;
+
+	std::atomic<int> messageCount_CS_ReqLogin_ = 0;
+	std::atomic<int> messageCount_CS_ReqSectorMove_ = 0;
+	std::atomic<int> messageCount_CS_ReqChat_ = 0;
+
+
+	std::atomic<int> dupLoginCountTotal_ = 0;
 };

@@ -65,7 +65,7 @@ struct MY_HEADER
 #pragma pack(pop)
 
 // TODO: 용량 수정
-#define PACKET_CAPACITY				2000
+#define PACKET_CAPACITY				1000
 #define HEADER_CAPACITY				5
 
 class Packet;

@@ -52,7 +52,7 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 
 	InterlockedIncrement(&sendMessageCount_);
 
-	this->SendPost(session);
+	SendPost(session);
 
 	session->sessionLock_.unlock();
 
@@ -155,7 +155,7 @@ void LanServer::RecvPost(Session* session)
 		}
 		else if (error == WSAECONNRESET || error == WSAECONNABORTED)
 		{
-			this->ReleaseSession(session);
+			ReleaseSession(session);
 
 			return;
 		}
@@ -163,7 +163,7 @@ void LanServer::RecvPost(Session* session)
 		{
 			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
 			//__debugbreak();
-			this->ReleaseSession(session);
+			ReleaseSession(session);
 
 			return;
 		}
@@ -220,15 +220,15 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 
 		InterlockedIncrement(&recvMessageCount_);
 
-		this->OnRecv(session->sessionId_, packet);
+		OnRecv(session->sessionId_, packet);
 	}
 
 	// WSARecv() 이전에 호출
 	InterlockedIncrement(&session->ioCount_);
 
-	this->RecvPost(session);
+	RecvPost(session);
 
-	this->ReleaseSession(session);
+	ReleaseSession(session);
 }
 
 
@@ -286,7 +286,7 @@ void LanServer::SendPost(Session* session)
 		}
 		else if (error == WSAECONNRESET || error == WSAECONNABORTED)
 		{
-			this->ReleaseSession(session);
+			ReleaseSession(session);
 
 			return;
 		}
@@ -294,7 +294,7 @@ void LanServer::SendPost(Session* session)
 		{
 			LOG(L"WSASend() error: %d, iocount: %d", error, session->ioCount_);
 			//__debugbreak();
-			this->ReleaseSession(session);
+			ReleaseSession(session);
 
 			return;
 		}
@@ -314,9 +314,9 @@ void LanServer::CompleteSend(Session* session, int numOfBytes)
 	session->sessionLock_.unlock();
 
 	if (s > 0)
-		this->SendPost(session);
+		SendPost(session);
 
-	this->ReleaseSession(session);
+	ReleaseSession(session);
 }
 
 void LanServer::ReleaseSession(Session* session)
@@ -333,7 +333,7 @@ void LanServer::ReleaseSession(Session* session)
 
 		session->sessionLock_.unlock();
 
-		this->OnRelease(session->sessionId_);
+		OnRelease(session->sessionId_);
 
 		delete session;
 

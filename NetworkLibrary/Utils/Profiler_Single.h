@@ -83,7 +83,7 @@ public:
 		// 1초의 진동주기 (현재 os에서는 천만 -> 100ns 단위 측정 가능)
 		QueryPerformanceFrequency(&freq_);
 
-		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, this->ProfilerThread, this, 0, nullptr);
+		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, ProfilerThread, this, 0, nullptr);
 	}
 
 	~Profiler()
@@ -124,13 +124,13 @@ public:
 	void BeginProfile(const std::wstring& Name)
 	{
 		// Profiler 리스트에서 들고 오거나, 없다면 리스트에 추가
-		ProfileData* profile = this->Find(Name);
+		ProfileData* profile = Find(Name);
 
 		if (profile == nullptr)
 		{
 			profile = new ProfileData(Name);
 
-			this->Insert(profile);
+			Insert(profile);
 		}
 
 		QueryPerformanceCounter(&(profile->startTime_));
@@ -141,7 +141,7 @@ public:
 		LARGE_INTEGER endTime;
 		QueryPerformanceCounter(&endTime);
 
-		ProfileData* profile = this->Find(Name);
+		ProfileData* profile = Find(Name);
 
 		if ((endTime.QuadPart - profile->startTime_.QuadPart) < 0)
 		{

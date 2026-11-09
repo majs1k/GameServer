@@ -12,6 +12,8 @@ int main()
 
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 
+	Profiler::Start();
+
 	ChatServer server;
 
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);
@@ -19,6 +21,12 @@ int main()
 
 	while (1)
 	{
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x0001)
+		{
+			__debugbreak();
+			break;
+		}
+
 		//if (GetAsyncKeyState('X') & 0x0001)
 		//	break;
 
@@ -28,7 +36,7 @@ int main()
 		//else if (GetAsyncKeyState('C') & 0x0001)
 		//	ProfilerManager::Instance().Clear();
 
-		Sleep(INFINITE);
+		Sleep(1000);
 	}
 
 	server.Stop();

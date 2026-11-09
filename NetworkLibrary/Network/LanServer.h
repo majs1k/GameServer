@@ -14,7 +14,7 @@
 #include "../Utils/LockFreeQueue.h"
 
 #define SEND_SIZE				20000
-#define RECV_SIZE				20000
+#define RECV_SIZE				1000
 
 class Packet;
 
@@ -50,14 +50,16 @@ private:
 
 		TRingBuffer<Packet*> sendPostQueue_;
 
-		//RingBuffer recvQueue_{ RECV_SIZE };
-		Packet* recvPacket_;
+		RingBuffer recvQueue_{ RECV_SIZE };
+		//Packet* recvPacket_;
 
 		OverlappedEx sendOverlapped_;
 		OverlappedEx recvOverlapped_;
 
 		LONG ioCount_;
 		LONG sendPending_;
+
+		int sendCount_;
 
 		//std::recursive_mutex sessionLock_;
 
@@ -127,6 +129,9 @@ protected:
 	std::atomic<int> acceptCount_;
 	std::atomic<int> recvMessageCount_;
 	std::atomic<int> sendMessageCount_;
+
+	int acceptCountTotal_ = 0;
+	int disconnectCountTotal_ = 0;
 
 public:
 

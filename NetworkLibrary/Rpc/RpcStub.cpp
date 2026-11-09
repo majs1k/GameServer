@@ -55,7 +55,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 
         *packet >> playerId >> chat;
     
-        return CS_ReqMessage(sessionId, playerId, chat);
+        return CS_ReqChat(sessionId, playerId, chat);
     }
     case 6:
     {
@@ -66,7 +66,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 
         *packet >> playerId >> loginId >> nickname >> chat;
     
-        return SC_ResMessage(sessionId, playerId, loginId, nickname, chat);
+        return SC_ResChat(sessionId, playerId, loginId, nickname, chat);
     }
     case 7:
     {
@@ -103,12 +103,12 @@ bool RpcStub::SC_ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sect
     return true;
 }
 
-bool RpcStub::CS_ReqMessage(uint64_t sessionId, int64_t playerId, Chat& chat)
+bool RpcStub::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
     return true;
 }
 
-bool RpcStub::SC_ResMessage(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+bool RpcStub::SC_ResChat(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
 {
     return true;
 }

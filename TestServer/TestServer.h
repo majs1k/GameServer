@@ -4,14 +4,33 @@
 #include "Network/LanServer.h"
 #include "Utils/Packet.h"
 #include "Utils/LockFreeQueue.h"
+#include "Utils/LockQueue.h"
 
 
 class TestServer : public LanServer
 {
 private:
 
+	struct Message
+	{
+		uint64_t sessionId_;
+		Packet* packet_;
+		ushort protocol_;
+
+	public:
+
+		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+		{
+			sessionId_ = sessionId;
+			packet_ = packet;
+			protocol_ = protocol;
+		}
+	};
+
+
 	std::thread logicThread_;
-	LockFreeQueue<std::pair<uint64_t, Packet*>> messageQueue_;
+	LockFreeQueue<Message*> messageQueue_;
+	//LockQueue<Message*> messageQueue_;
 
 public:
 
@@ -29,5 +48,14 @@ private:
 
 	void ProcessMessageQueue();
 	bool PacketProc(uint64_t sessionId, Packet* packet);
-	void Update();
+
+
+	std::thread monitorThread_;
+	static void monitorThread(TestServer* server);
+
+
+	void Monitoring();
+
+	MemoryPoolTls<Message> messagePool_;
+
 };

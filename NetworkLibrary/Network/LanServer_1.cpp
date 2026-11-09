@@ -13,12 +13,12 @@
 
 LanServer::Session::Session()
 {
-	recvPacket_ = packetPool_.Alloc();
+	//recvPacket_ = packetPool_.Alloc();
 }
 
 LanServer::Session::~Session()
 {
-	packetPool_.Free(recvPacket_);
+	//packetPool_.Free(recvPacket_);
 }
 
 
@@ -33,8 +33,8 @@ void LanServer::Session::Initialize(SOCKET socket, std::string& ip, int port, ui
 	sendQueue_.Clear();
 	sendPostQueue_.Clear();
 
-	//recvQueue_.Clear();
-	recvPacket_->Clear(sizeof(LAN_HEADER));
+	recvQueue_.Clear();
+	//recvPacket_->Clear(sizeof(LAN_HEADER));
 
 	sendOverlapped_.type = IO_TYPE::SEND;
 	recvOverlapped_.type = IO_TYPE::RECV;
@@ -42,6 +42,8 @@ void LanServer::Session::Initialize(SOCKET socket, std::string& ip, int port, ui
 	// 초기화시 참조 카운트를 1로 시작
 	ioCount_ = 1;
 	sendPending_ = false;
+
+	sendCount_ = 0;
 }
 
 LanServer::LanServer()
@@ -121,7 +123,7 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	if (bind(listenSocket_, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 		wprintf(L"bind() error");
 
-	if (listen(listenSocket_, SOMAXCONN) == SOCKET_ERROR)
+	if (listen(listenSocket_, SOMAXCONN_HINT(65535)) == SOCKET_ERROR)
 		wprintf(L"listen() error");
 
 	hIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
@@ -182,7 +184,34 @@ bool LanServer::Disconnect(uint64_t sessionId)
 {
 	Session* session = sessions[GetSessionIndex(sessionId)];
 
-	closesocket(session->socket_);
+	// 세션 보장용 카운트 증가
+	int count = InterlockedIncrement(&session->ioCount_);
+
+	if ((count >> 16) == 0x0001)
+	{
+		//ReleaseSession(session);
+
+		return false;
+	}
+
+	// 새로운 세션으로 잘못 얻었다면
+	if (session->sessionId_ != sessionId)
+	{
+		// 새로운 세션의 카운트 감소
+		ReleaseSession(session);
+
+		return false;
+	}
+
+
+
+	CancelIoEx((HANDLE)session->socket_, nullptr);
+
+	disconnectCountTotal_++;
+
+
+	// 세션 보장용 카운트 감소
+	ReleaseSession(session);
 
 	return true;
 }
@@ -193,21 +222,25 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	Session* session = sessions[GetSessionIndex(sessionId)];
 
 	// 세션 보장용 카운트 증가
-	InterlockedIncrement(&session->ioCount_);
+	int count = InterlockedIncrement(&session->ioCount_);
 
+	if ((count >> 16) == 0x0001)
+	{
+		//ReleaseSession(session);
+
+		return false;
+	}
+
+	// 새로운 세션으로 잘못 얻었다면
 	if (session->sessionId_ != sessionId)
 	{
+		// 새로운 세션의 카운트 감소
 		ReleaseSession(session);
 
 		return false;
 	}
 
-	if (session->ioCount_ < 0)
-	{
-		ReleaseSession(session);
 
-		return false;
-	}
 
 	///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
 	packet->SetLanHeader();
@@ -222,14 +255,17 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 
 	if (session->sendQueue_.Size() > 2000)
 	{
+		/// 어케 수정?
 		Disconnect(sessionId);
 
 		return false;
 	}
 
-	++sendMessageCount_;
+	sendMessageCount_++;
 
-	this->SendPost(session);
+	session->sendCount_++;
+
+	SendPost(session);
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -261,7 +297,8 @@ unsigned int __stdcall LanServer::AcceptThread(void* param)
 			continue;
 		}
 
-		++server->acceptCount_;
+		server->acceptCount_++;
+		server->acceptCountTotal_++;
 
 		char str[16];
 		InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
@@ -328,8 +365,8 @@ unsigned int __stdcall LanServer::WorkerThread(void* param)
 			// 완료 패킷을 꺼내서, 실패한 IO에 대한 정보를 매개변수에 저장함
 			if (overlapped != nullptr)
 			{
-				// 64 상대가 연결을 끊었을때 (numOfBytes == 0)
-				// 1236 clientSock 닫았을때
+				// 64 상대가 연결을 끊었을때
+				// 1236 내가 연결을 끊었을때 (closesocket)
 				if (error == ERROR_NETNAME_DELETED || error == ERROR_CONNECTION_ABORTED)
 				{
 					server->ReleaseSession(session);
@@ -342,6 +379,12 @@ unsigned int __stdcall LanServer::WorkerThread(void* param)
 				else if (error == ERROR_SEM_TIMEOUT)
 				{
 					//__debugbreak();
+
+					continue;
+				}
+				else if (error == WSA_OPERATION_ABORTED)
+				{
+					server->ReleaseSession(session);
 
 					continue;
 				}

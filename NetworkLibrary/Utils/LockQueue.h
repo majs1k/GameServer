@@ -41,4 +41,9 @@ public:
 
 		return true;
 	}
+
+	int Size()
+	{
+		return queue_.size();
+	}
 };
