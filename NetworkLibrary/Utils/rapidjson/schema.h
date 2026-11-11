@@ -397,13 +397,13 @@ private:
         double d;
     };
 
-    bool WriteType(Type type) { return WriteBuffer(type, 0, 0); }
+    bool WriteType(Type type_) { return WriteBuffer(type_, 0, 0); }
     
     bool WriteNumber(const Number& n) { return WriteBuffer(kNumberType, &n, sizeof(n)); }
     
-    bool WriteBuffer(Type type, const void* data, size_t len) {
+    bool WriteBuffer(Type type_, const void* data, size_t len) {
         // FNV-1a from http://isthe.com/chongo/tech/comp/fnv/
-        uint64_t h = Hash(RAPIDJSON_UINT64_C2(0xcbf29ce4, 0x84222325), type);
+        uint64_t h = Hash(RAPIDJSON_UINT64_C2(0xcbf29ce4, 0x84222325), type_);
         const unsigned char* d = static_cast<const unsigned char*>(data);
         for (size_t i = 0; i < len; i++)
             h = Hash(h, d[i]);
@@ -1444,14 +1444,14 @@ private:
     static bool IsPatternMatch(const RegexType*, const Ch *, SizeType) { return true; }
 #endif // RAPIDJSON_SCHEMA_USE_STDREGEX
 
-    void AddType(const ValueType& type) {
-        if      (type == GetNullString()   ) type_ |= 1 << kNullSchemaType;
-        else if (type == GetBooleanString()) type_ |= 1 << kBooleanSchemaType;
-        else if (type == GetObjectString() ) type_ |= 1 << kObjectSchemaType;
-        else if (type == GetArrayString()  ) type_ |= 1 << kArraySchemaType;
-        else if (type == GetStringString() ) type_ |= 1 << kStringSchemaType;
-        else if (type == GetIntegerString()) type_ |= 1 << kIntegerSchemaType;
-        else if (type == GetNumberString() ) type_ |= (1 << kNumberSchemaType) | (1 << kIntegerSchemaType);
+    void AddType(const ValueType& type_) {
+        if      (type_ == GetNullString()   ) type_ |= 1 << kNullSchemaType;
+        else if (type_ == GetBooleanString()) type_ |= 1 << kBooleanSchemaType;
+        else if (type_ == GetObjectString() ) type_ |= 1 << kObjectSchemaType;
+        else if (type_ == GetArrayString()  ) type_ |= 1 << kArraySchemaType;
+        else if (type_ == GetStringString() ) type_ |= 1 << kStringSchemaType;
+        else if (type_ == GetIntegerString()) type_ |= 1 << kIntegerSchemaType;
+        else if (type_ == GetNumberString() ) type_ |= (1 << kNumberSchemaType) | (1 << kIntegerSchemaType);
     }
 
     // Creates parallel validators for allOf, anyOf, oneOf, not and schema dependencies, if required.

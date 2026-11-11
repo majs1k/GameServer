@@ -198,15 +198,15 @@ public:
         \param type Type of the root of json.
         \note When using PrettyWriter::RawValue(), the result json may not be indented correctly.
     */
-    bool RawValue(const Ch* json, size_t length, Type type) {
+    bool RawValue(const Ch* json, size_t length, Type type_) {
         RAPIDJSON_ASSERT(json != 0);
-        PrettyPrefix(type);
+        PrettyPrefix(type_);
         return Base::EndValue(Base::WriteRawValue(json, length));
     }
 
 protected:
-    void PrettyPrefix(Type type) {
-        (void)type;
+    void PrettyPrefix(Type type_) {
+        (void)type_;
         if (Base::level_stack_.GetSize() != 0) { // this value is not at root
             typename Base::Level* level = Base::level_stack_.template Top<typename Base::Level>();
 
@@ -240,7 +240,7 @@ protected:
                     WriteIndent();
             }
             if (!level->inArray && level->valueCount % 2 == 0)
-                RAPIDJSON_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
+                RAPIDJSON_ASSERT(type_ == kStringType);  // if it's in object, then even number should be a name
             level->valueCount++;
         }
         else {

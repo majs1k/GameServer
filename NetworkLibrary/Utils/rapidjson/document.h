@@ -717,16 +717,16 @@ public:
         \param type Type of the value.
         \note Default content for number is zero.
     */
-    explicit GenericValue(Type type) RAPIDJSON_NOEXCEPT : data_() {
+    explicit GenericValue(Type type_) RAPIDJSON_NOEXCEPT : data_() {
         static const uint16_t defaultFlags[] = {
             kNullFlag, kFalseFlag, kTrueFlag, kObjectFlag, kArrayFlag, kShortStringFlag,
             kNumberAnyFlag
         };
-        RAPIDJSON_NOEXCEPT_ASSERT(type >= kNullType && type <= kNumberType);
-        data_.f.flags = defaultFlags[type];
+        RAPIDJSON_NOEXCEPT_ASSERT(type_ >= kNullType && type_ <= kNumberType);
+        data_.f.flags = defaultFlags[type_];
 
         // Use ShortString to store empty string.
-        if (type == kStringType)
+        if (type_ == kStringType)
             data_.ss.SetLength(0);
     }
 
@@ -2511,8 +2511,8 @@ public:
         \param stackCapacity    Optional initial capacity of stack in bytes.
         \param stackAllocator   Optional allocator for allocating memory for stack.
     */
-    explicit GenericDocument(Type type, Allocator* allocator = 0, size_t stackCapacity = kDefaultStackCapacity, StackAllocator* stackAllocator = 0) :
-        GenericValue<Encoding, Allocator>(type),  allocator_(allocator), ownAllocator_(0), stack_(stackAllocator, stackCapacity), parseResult_()
+    explicit GenericDocument(Type type_, Allocator* allocator = 0, size_t stackCapacity = kDefaultStackCapacity, StackAllocator* stackAllocator = 0) :
+        GenericValue<Encoding, Allocator>(type_),  allocator_(allocator), ownAllocator_(0), stack_(stackAllocator, stackCapacity), parseResult_()
     {
         if (!allocator_)
             ownAllocator_ = allocator_ = RAPIDJSON_NEW(Allocator)();

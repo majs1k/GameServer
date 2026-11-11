@@ -153,14 +153,14 @@ struct UTF8 {
             return true;
         }
 
-        unsigned char type = GetRange(static_cast<unsigned char>(c));
-        if (type >= 32) {
+        unsigned char type_ = GetRange(static_cast<unsigned char>(c));
+        if (type_ >= 32) {
             *codepoint = 0;
         } else {
-            *codepoint = (0xFFu >> type) & static_cast<unsigned char>(c);
+            *codepoint = (0xFFu >> type_) & static_cast<unsigned char>(c);
         }
         bool result = true;
-        switch (type) {
+        switch (type_) {
         case 2: RAPIDJSON_TAIL(); return result;
         case 3: RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
         case 4: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x50); RAPIDJSON_TAIL(); return result;
@@ -204,7 +204,7 @@ struct UTF8 {
     static unsigned char GetRange(unsigned char c) {
         // Referring to DFA of http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
         // With new mapping 1 -> 0x10, 7 -> 0x20, 9 -> 0x40, such that AND operation can test multiple types.
-        static const unsigned char type[] = {
+        static const unsigned char type_[] = {
             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -216,7 +216,7 @@ struct UTF8 {
             8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
             10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
         };
-        return type[c];
+        return type_[c];
     }
 
     template <typename InputByteStream>

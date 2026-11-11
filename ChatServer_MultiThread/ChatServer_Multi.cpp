@@ -5,24 +5,24 @@
 void ChatServer::SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY, Player* player)
 {
 	/// mapId 먼저 확인 후 삭제
-	mapIdLock_.lock();
-
-	auto it = sessionIdToMapId_.find(sessionId);
-
-	if (it == sessionIdToMapId_.end())
 	{
-		mapIdLock_.unlock();
+		std::lock_guard<std::mutex> lock(mapIdLock_);
 
-		Disconnect(sessionId);
+		auto it = sessionIdToMapId_.find(sessionId);
 
-		return;
+		if (it == sessionIdToMapId_.end())
+		{
+			Disconnect(sessionId);
+
+			return;
+		}
+
+		//sessionIdToMapId_.erase(sessionId);
+
+		//sessionIdToMapId_[sessionId] = tls_MapId_;
+
+		it->second = tls_MapId_;
 	}
-
-	sessionIdToMapId_.erase(sessionId);
-
-	sessionIdToMapId_[sessionId] = tls_MapId_;
-
-	mapIdLock_.unlock();
 
 
 	/// TODO: 수정 - player 전달?

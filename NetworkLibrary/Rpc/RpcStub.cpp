@@ -10,6 +10,8 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     {
     case 1:
     {
+        messageCount_CS_ReqLogin_++;
+
 		int64_t playerId;
 		LoginId loginId;
 		Nickname nickname;
@@ -30,6 +32,8 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     }
     case 3:
     {
+        messageCount_CS_ReqSectorMove_++;
+
 		int64_t playerId;
 		ushort sectorX;
 		ushort sectorY;
@@ -50,6 +54,8 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     }
     case 5:
     {
+        messageCount_CS_ReqChat_++;
+
 		int64_t playerId;
 		Chat chat;
 
@@ -79,6 +85,14 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     {
         return false;
     }
+    }
+
+    if (packet != nullptr)
+    {
+        if (packet->IsError())
+        {
+            __debugbreak();
+        }
     }
 }
 

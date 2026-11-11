@@ -519,8 +519,8 @@ public:
 
 #if RAPIDJSON_HAS_CXX11
 
-    typedef typename std::add_lvalue_reference<value_type>::type &reference;
-    typedef typename std::add_lvalue_reference<typename std::add_const<value_type>::type>::type &const_reference;
+    typedef typename std::add_lvalue_reference<value_type>::type_ &reference;
+    typedef typename std::add_lvalue_reference<typename std::add_const<value_type>::type_>::type_ &const_reference;
 
     pointer address(reference r) const RAPIDJSON_NOEXCEPT
     {

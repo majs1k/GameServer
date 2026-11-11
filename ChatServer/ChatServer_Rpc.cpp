@@ -26,7 +26,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 	auto it2 = playerMap_.find(playerId);
 
-	// 중복 접속 시 기존 접속 종료
+	// 중복 접속 시 기존 접속만 종료
 	if (it2 != playerMap_.end())
 	{
 		Player* alreadyLoginedPlayer = playerMap_[playerId];

@@ -342,3 +342,107 @@ void LanServer::ReleaseSession(Session* session)
 		InterlockedDecrement(&sessionCount_);
 	}
 }
+
+
+unsigned int __stdcall LanServer::AcceptThread(void* param)
+{
+	LanServer* server = (LanServer*)param;
+
+	server->AcceptFunc();
+
+	return 0;
+}
+
+void LanServer::AcceptFunc()
+{
+	while (1)
+	{
+		SOCKET clientSock = accept(listenSocket_, nullptr, nullptr);
+		if (clientSock == INVALID_SOCKET)
+		{
+			int error = WSAGetLastError();
+
+			// 10038 WSAENOTSOCK
+			if (error == 10038)
+				break;
+
+			wprintf(L"accept() error: %d", error);
+
+			continue;
+		}
+
+		CompleteAccept(clientSock);
+	}
+}
+
+void LanServer::CompleteAccept(SOCKET socket)
+{
+	acceptCount_++;
+	acceptCountTotal_++;
+
+	SOCKADDR_IN clientAddr;
+	int len = sizeof(clientAddr);
+
+	getpeername(socket, (SOCKADDR*)&clientAddr, &len);
+
+	char str[16];
+	InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
+	std::string ip = str;
+	int port = ntohs(clientAddr.sin_port);
+
+	// 허용되지 않은 ip와 port라면 바로 연결을 끊음
+	if (!OnConnectionRequest(ip, port))
+	{
+		closesocket(socket);
+
+		return;
+	}
+
+	//sessionMapLock_.lock();
+	//index = sessionIndex_.top();
+	//sessionIndex_.pop();
+	//sessionMapLock_.unlock();
+
+	int index;
+	sessionIndex_.Pop(index);
+
+	uint64_t sessionId = AllocSessionId(index);
+
+	Session* session = sessions[GetSessionIndex(sessionId)];
+
+	session->Initialize(socket, ip, port, sessionId);
+
+	InterlockedIncrement(&(sessionCount_));
+
+	//LOG_INFO(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
+
+	CreateIoCompletionPort((HANDLE)socket, hIOCP_, (ULONG_PTR)session, 0);
+
+
+	OnAccept(session->sessionId_);
+
+	RecvPost(session);
+}
+
+
+void LanServer::ReleaseSession(Session* session)
+{
+	if (InterlockedDecrement(&session->ioCount_) == 0)
+	{
+		if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
+			return;
+
+		//int index = GetSessionIndex(session->sessionId_);
+		//sessionIndex_.Push(index);
+		uint64_t sessionId = session->sessionId_;
+
+		//closesocket(session->socket_);
+
+		InterlockedDecrement(&sessionCount_);
+
+		OnRelease(sessionId);
+
+		/// 동일한 소켓으로 AcceptEx 재호출
+		AcceptPost(session);
+	}
+}

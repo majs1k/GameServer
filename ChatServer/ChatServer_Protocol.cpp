@@ -17,6 +17,7 @@ void ChatServer::ProcessMessageQueue()
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
 
+		int test = 0;
 
 		switch (protocol)
 		{
@@ -26,6 +27,8 @@ void ChatServer::ProcessMessageQueue()
 			if (!PacketProc(sessionId, packet))
 			{
 				Disconnect(sessionId);
+
+				test = 1;
 			}
 
 			messageCount_CS_NETWORK_PACKET_++;
@@ -75,7 +78,7 @@ void ChatServer::ProcessMessageQueue()
 		{
 			if (packet->IsError())
 			{
-				__debugbreak();
+				Disconnect(sessionId);
 			}
 		}
 
@@ -172,6 +175,8 @@ void ChatServer::SS_CheckTimeout(uint64_t sessionId)
 		if (timeDiff > TIMEOUT_MS)
 		{
 			Disconnect(p->sessionId_);
+
+			timeoutCountTotal_++;
 		}
 	}
 }

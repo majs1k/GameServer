@@ -143,12 +143,12 @@ void ChatServer::Monitoring()
 	printf("Session	   : %d\n", sessionCount_);
 	printf("Player	   : %d\n\n", playerCount_);
 
-	printf("Accept     : %d\n", acceptCountTotal_);
-	printf("Discon     : %d\n", disconnectCountTotal_);
-	printf("DupLogin   : %d\n\n", dupLoginCountTotal_.load());
+	printf("Accept     : %d\n", acceptCountTotal_.load());
+	printf("Discon     : %d\n", disconnectCountTotal_.load());
+	printf("DupLogin   : %d\n", dupLoginCountTotal_.load());
+	printf("Timeout    : %d\n\n", timeoutCountTotal_.load());
 
 	printf("Accept TPS : %d\n", acceptCount);
-
 	printf("MessageQ   : %d\n\n", messageQueue_.Size());
 
 	printf("Update TPS : %d\n", procMessgaeCount);

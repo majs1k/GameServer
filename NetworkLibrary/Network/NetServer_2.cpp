@@ -6,7 +6,7 @@
 
 void NetServer::RecvPost(Session* session)
 {
-	ZeroMemory(&session->recvOverlapped_.overlapped, sizeof(WSAOVERLAPPED));
+	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
 
@@ -38,7 +38,7 @@ void NetServer::RecvPost(Session* session)
 		{
 			//printf("recv() Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED)
+		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAESHUTDOWN)
 		{
 			ReleaseSession(session);
 
@@ -46,8 +46,10 @@ void NetServer::RecvPost(Session* session)
 		}
 		else
 		{
-			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
-			//__debugbreak();
+			LOG(L"WSARecv() error: %d", error);
+
+			__debugbreak();
+
 			ReleaseSession(session);
 
 			return;
@@ -99,7 +101,13 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		int bodySize = header.size_;
 
 		if (bodySize < 0)
-			break;
+		{
+			LOG_INFO(L"body size minus error");
+
+			ReleaseSession(session);
+
+			return;
+		}
 
 		if (useSize < sizeof(header) + bodySize)
 			break;
@@ -123,6 +131,8 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 			ReleaseSession(session);
 
+			packet->Free();
+
 			return;
 		}
 
@@ -133,7 +143,6 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		packet->Free();
 	}
 
-	// WSARecv() 이전에 호출
 	InterlockedIncrement(&session->ioCount_);
 
 	RecvPost(session);
@@ -172,8 +181,10 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //		}
 //		else
 //		{
-//			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
-//			//__debugbreak();
+//			LOG(L"WSARecv() error: %d", error);
+//
+//			__debugbreak();
+//
 //			ReleaseSession(session);
 //
 //			return;
@@ -285,9 +296,9 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //			{
 //				LOG_INFO(L"recv checksum error");
 //
-//				packet->Free();
-//
 //				ReleaseSession(session);
+//
+//				packet->Free();
 //
 //				return;
 //			}
@@ -332,7 +343,7 @@ void NetServer::SendPost(Session* session)
 	if (InterlockedExchange(&session->sendPending_, 1) == 1)
 		return;
 
-	ZeroMemory(&session->sendOverlapped_.overlapped, sizeof(WSAOVERLAPPED));
+	ZeroMemory(&session->sendOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	//int count = min(session->sendQueue_.UseSize(), MAX_WSABUF);
 	int count = min(session->sendQueue_.Size(), MAX_WSABUF);
@@ -359,7 +370,15 @@ void NetServer::SendPost(Session* session)
 		session->sendPostQueue_.Enqueue(packet);
 	}
 
+
 	InterlockedIncrement(&session->ioCount_);
+
+	//if (session->isDisconnected_)
+	//{
+	//	ReleaseSession(session);
+
+	//	return;
+	//}
 
 	// wsaBuf count가 0이면 10022 에러 발생함
 	int retval = WSASend(session->socket_, wsaBuf, count, nullptr, 0, (WSAOVERLAPPED*)&(session->sendOverlapped_), NULL);
@@ -372,7 +391,7 @@ void NetServer::SendPost(Session* session)
 		{
 			//printf("send Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAENOTSOCK)
+		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAENOTSOCK || error == WSAESHUTDOWN)
 		{
 			ReleaseSession(session);
 
@@ -397,75 +416,80 @@ void NetServer::CompleteSend(Session* session, int numOfBytes)
 {
 	while (1)
 	{
-		Packet* p;
+		Packet* packet;
 
-		bool ret = session->sendPostQueue_.Dequeue(p);
+		bool ret = session->sendPostQueue_.Dequeue(packet);
 
 		if (ret == false)
 			break;
 
 		//delete p;
-		p->Free();
+		packet->Free();
 	}
 
 	InterlockedExchange(&session->sendPending_, 0);
 
 	//int s = session->sendQueue_.UseSize();
-	int s = session->sendQueue_.Size();
+	int size = session->sendQueue_.Size();
 
-	if (s > 0)
+	if (size > 0)
 		SendPost(session);
 
 	ReleaseSession(session);
 }
 
+
 void NetServer::ReleaseSession(Session* session)
 {
 	if (InterlockedDecrement(&session->ioCount_) == 0)
 	{
-		if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
+		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_FLAG, 0) != 0)
 			return;
 
-
-
-		int r = closesocket(session->socket_);
-
-		if (r == SOCKET_ERROR)
-		{
-			int n = WSAGetLastError();
-
-			__debugbreak();
-		}
-	
-
-		int index = GetSessionIndex(session->sessionId_);
-		uint64_t sessionId = session->sessionId_;
-
-
-		sessionIndex_.Push(index);
-
-		/// session 재사용 가능하므로 id값 자체로 전달해야함
-		OnRelease(sessionId);
-
-		//LOG_INFO(L"[NETWORK] session delete");
+		OnRelease(session->sessionId_);
 
 		InterlockedDecrement(&sessionCount_);
+
+
+		/// 기본용
+		closesocket(session->socket_);
+		int index = GetSessionIndex(session->sessionId_);
+		sessionIndexPool_.Push(index);
+
+		/// 추가
+		session->Clear();
+
+
+		/// 소켓 연결 종료 (세션 사용 끝)
+		//ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+
+		//BOOL ret = lpfnDisconnectex_(session->socket_, (OVERLAPPED*)&session->disconnectOverlapped_, TF_REUSE_SOCKET, 0);
+
+		//if (ret == FALSE)
+		//{
+		//	int error = WSAGetLastError();
+
+		//	if (error == ERROR_IO_PENDING)
+		//	{
+		//		return;
+		//	}
+		//	else
+		//	{
+		//		wprintf(L"DisconnectEx failed with error: %d\n", error);
+		//		__debugbreak();
+		//	}
+		//}
 	}
 }
 
-uint64_t NetServer::AllocSession()
+
+uint64_t NetServer::AllocSessionId(Session* session)
 {
-	int index;
+	uint64_t index = session->sessionId_ >> 48;
 
-	//sessionMapLock_.lock();
-	//index = sessionIndex_.top();
-	//sessionIndex_.pop();
-	//sessionMapLock_.unlock();
+	uint64_t id = ++idSeed_;
 
-	sessionIndex_.Pop(index);
-
-	// idSeed_는 accept 스레드에서만 변경 가능
-	return ++idSeed_ | (static_cast<uint64_t>(index) << 48);
+	return id | (index << 48);
 }
 
 uint64_t NetServer::GetSessionId(uint64_t sessionId)

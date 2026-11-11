@@ -150,11 +150,8 @@ void TestServer::Monitoring()
 
 	printf("Session	   : %d\n", sessionCount_);
 
-	printf("Accept     : %d\n", acceptCountTotal_);
-	printf("Discon     : %d\n", disconnectCountTotal_);
-	printf("Release    : %d\n\n", releaseCountTotal_.load());
-
-	printf("test    : %d\n\n", test_.load());
+	printf("Accept     : %d\n", acceptCountTotal_.load());
+	printf("Discon     : %d\n", disconnectCountTotal_.load());
 
 	printf("Accept TPS : %d\n", acceptCount);
 

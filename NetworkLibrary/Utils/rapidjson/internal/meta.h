@@ -149,9 +149,9 @@ struct SfinaeTag {};
 template <typename T> struct RemoveSfinaeTag;
 template <typename T> struct RemoveSfinaeTag<SfinaeTag&(*)(T)> { typedef T Type; };
 
-#define RAPIDJSON_REMOVEFPTR_(type) \
+#define RAPIDJSON_REMOVEFPTR_(type_) \
     typename ::RAPIDJSON_NAMESPACE::internal::RemoveSfinaeTag \
-        < ::RAPIDJSON_NAMESPACE::internal::SfinaeTag&(*) type>::Type
+        < ::RAPIDJSON_NAMESPACE::internal::SfinaeTag&(*) type_>::Type
 
 #define RAPIDJSON_ENABLEIF(cond) \
     typename ::RAPIDJSON_NAMESPACE::internal::EnableIf \

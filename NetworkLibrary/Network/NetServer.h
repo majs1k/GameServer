@@ -7,6 +7,7 @@
 #include <atomic>
 #include <WinSock2.h>
 //#include <Windows.h>
+#include <mswsock.h>
 
 #include "../Utils/RingBuffer.h"
 #include "../Utils/MemoryPoolTls.h"
@@ -26,16 +27,21 @@ private:
 	{
 		SEND = 0,
 		RECV = 1,
+		ACCEPT = 2,
+		DISCONNECT = 3,
 	};
 
 	struct OverlappedEx
 	{
-		WSAOVERLAPPED overlapped;
-		IO_TYPE type;
+		WSAOVERLAPPED overlapped_;
+		IO_TYPE type_;
 	};
 
 	struct Session
 	{
+		OverlappedEx acceptOverlapped_;
+		OverlappedEx disconnectOverlapped_;
+
 		SOCKET socket_;
 		// 고유값. sessionList의 인덱스로 활용 x (디버깅 용이)
 		// 컨텐츠에서 sessionId로만 접근 (컨텐츠 구현 용이)
@@ -59,12 +65,15 @@ private:
 		LONG ioCount_;
 		LONG sendPending_;
 
+		char acceptBuffer[100];
+
 		//std::recursive_mutex sessionLock_;
 
 		Session();
 		~Session();
 
-		void Initialize(SOCKET socket, std::string& ip, int port, uint64_t id);
+		void Initialize(uint64_t sessionId, std::string& ip, int port);
+		void Clear();
 	};
 
 private:
@@ -83,17 +92,19 @@ private:
 	//std::unordered_map<__int64, Session*> sessionMap_;
 	//std::recursive_mutex sessionMapLock_;
 
-	Session* sessions[20000];
+	//Session** sessions_;
+	Session* sessions_[20000];
 
-	//std::stack<int> sessionIndex_;
-	LockFreeStack<int> sessionIndex_;
+	//std::stack<int> sessionIndexPool_;
+	LockFreeStack<int> sessionIndexPool_;
 
 protected:
 
 	LONG sessionCount_ = 0;
 	int sessionMax_;
 
-	uint64_t idSeed_ = 0;
+	/// atomic 변경
+	std::atomic<uint64_t> idSeed_ = 0;
 
 public:
 
@@ -124,18 +135,32 @@ protected:
 
 	bool shutdown_ = false;
 
-	std::atomic<int> acceptCount_ = 0;
-	std::atomic<int> recvMessageCount_ = 0;
-	std::atomic<int> sendMessageCount_ = 0;
-	
-	int acceptCountTotal_ = 0;
-	int disconnectCountTotal_ = 0;
+	std::atomic<int> acceptCount_;
+	std::atomic<int> recvMessageCount_;
+	std::atomic<int> sendMessageCount_;
 
+	std::atomic<int> acceptCountTotal_ = 0;
+	std::atomic<int> disconnectCountTotal_ = 0;
 
 private:
 
 	static unsigned int __stdcall AcceptThread(void* param);
+	void AcceptFunc();
+	void CompleteAccept(SOCKET socket);
+
+
 	static unsigned int __stdcall WorkerThread(void* param);
+	void WorkerFunc();
+
+	void AcceptPost(Session* session);
+	void CompleteAccept(Session* session);
+
+	void CompleteDisconnect(Session* session);
+
+	LPFN_ACCEPTEX lpfnAcceptEx_;
+	LPFN_DISCONNECTEX lpfnDisconnectex_;
+
+	constexpr static int RELEASE_FLAG = 0x00010000;
 
 	void RecvPost(Session* session);
 	void CompleteRecv(Session* session, int numOfBytes);
@@ -147,7 +172,8 @@ private:
 
 protected:
 
-	uint64_t AllocSession();
+	// 세션의 배열 인덱스가 아이디에 포함된 이유 -> 컨텐츠에서 id로만 접근하기에
+	uint64_t AllocSessionId(Session* session);
 	uint64_t GetSessionId(uint64_t sessionId);
 	int GetSessionIndex(uint64_t sessionId);
 };

@@ -117,3 +117,10 @@ sessionId vector 오버로딩 적용
 중복 로그인 처리 -> 둘다 연결 종료
 sessionId , Player* 로 해시맵 수정
 ```
+
+### 26-11-09
+```
+lock_guard + {}
+
+락프리큐 일부 수정_
+```

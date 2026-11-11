@@ -14,4 +14,8 @@ public:
     virtual bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat);
     virtual bool SC_ResChat(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat);
     virtual bool CS_ReqHeartbeat(uint64_t sessionId);
+
+    std::atomic<int> messageCount_CS_ReqLogin_ = 0;
+    std::atomic<int> messageCount_CS_ReqSectorMove_ = 0;
+    std::atomic<int> messageCount_CS_ReqChat_ = 0;
 };

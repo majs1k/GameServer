@@ -1,3 +1,5 @@
+#pragma comment(lib, "Mswsock.lib")
+
 #include "LanServer.h"
 #include "../Utils/Packet.h"
 #include "../Utils/Logger.h"
@@ -6,7 +8,7 @@
 
 void LanServer::RecvPost(Session* session)
 {
-	ZeroMemory(&session->recvOverlapped_.overlapped, sizeof(WSAOVERLAPPED));
+	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
 
@@ -46,8 +48,10 @@ void LanServer::RecvPost(Session* session)
 		}
 		else
 		{
-			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
-			//__debugbreak();
+			LOG(L"WSARecv() error: %d", error);
+
+			__debugbreak();
+
 			ReleaseSession(session);
 
 			return;
@@ -113,9 +117,11 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 
 	// WSARecv() 이전에 호출
 	//InterlockedIncrement(&session->ioCount_);
-	///
-	if (InterlockedIncrement(&session->ioCount_) == 0x00010001)
-		__debugbreak();
+	LONG result = AddSessionCount(session);
+	if (result == -1)
+	{
+		return;
+	}
 
 	RecvPost(session);
 
@@ -152,8 +158,10 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //		}
 //		else
 //		{
-//			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
-//			//__debugbreak();
+//			LOG(L"WSARecv() error: %d", error);
+//
+//			__debugbreak();
+//
 //			ReleaseSession(session);
 //
 //			return;
@@ -254,7 +262,12 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //	session->recvPacket_ = newPacket;
 //
 //	// WSARecv() 이전에 호출
-//	InterlockedIncrement(&session->ioCount_);
+//	//InterlockedIncrement(&session->ioCount_);
+//	LONG result = AddSessionCount(session);
+//	if (result == -1)
+//	{
+//		return;
+//	}
 //
 //	RecvPost(session);
 //
@@ -269,7 +282,7 @@ void LanServer::SendPost(Session* session)
 	if (InterlockedExchange(&session->sendPending_, 1) == 1)
 		return;
 
-	ZeroMemory(&session->sendOverlapped_.overlapped, sizeof(WSAOVERLAPPED));
+	ZeroMemory(&session->sendOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	//int count = min(session->sendQueue_.UseSize(), MAX_WSABUF);
 	int count = min(session->sendQueue_.Size(), MAX_WSABUF);
@@ -297,10 +310,11 @@ void LanServer::SendPost(Session* session)
 	}
 
 	//InterlockedIncrement(&session->ioCount_);
-	///
-	if (InterlockedIncrement(&session->ioCount_) == 0x00010001)
-		__debugbreak();
-
+	LONG result = AddSessionCount(session);
+	if (result == -1)
+	{
+		return;
+	}
 
 
 	// wsaBuf count가 0이면 10022 에러 발생함
@@ -339,68 +353,95 @@ void LanServer::CompleteSend(Session* session, int numOfBytes)
 {
 	while (1)
 	{
-		Packet* p;
-		
-		bool ret = session->sendPostQueue_.Dequeue(p);
+		Packet* packet;
+
+		bool ret = session->sendPostQueue_.Dequeue(packet);
 
 		if (ret == false)
 			break;
 
 		//delete p;
-		p->Free();
+		packet->Free();
 	}
 
 	InterlockedExchange(&session->sendPending_, 0);
 
 	//int s = session->sendQueue_.UseSize();
-	int s = session->sendQueue_.Size();
+	int size = session->sendQueue_.Size();
 
-	if (s > 0)
+	if (size > 0)
 		SendPost(session);
 
 	ReleaseSession(session);
 }
 
+
+LONG LanServer::AddSessionCount(Session* session)
+{
+	/// -1 반환시 ioCount 증가 실패
+	if (session->isDisconnected_)
+		return -1;
+
+	LONG count = InterlockedIncrement(&session->ioCount_);
+
+	return count;
+}
+
+
 void LanServer::ReleaseSession(Session* session)
 {
 	if (InterlockedDecrement(&session->ioCount_) == 0)
 	{
-		if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
+		if (InterlockedCompareExchange(&session->ioCount_, session->ioCount_ | RELEASE_FLAG, 0) != 0)
 			return;
 
+		//if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
+		//	return;
 
-		int index = GetSessionIndex(session->sessionId_);
-		uint64_t sessionId = session->sessionId_;
-
-		if (session->sendCount_ == 0)
-		{
-			__debugbreak();
-		}
-
-		closesocket(session->socket_);
-
-
-		sessionIndex_.Push(index);
-
-		OnRelease(sessionId);
+		OnRelease(session->sessionId_);
 
 		InterlockedDecrement(&sessionCount_);
+
+
+		/// 소켓 연결 종료 (세션 사용 끝)
+		ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+
+		BOOL ret = lpfnDisconnectex_(session->socket_, (OVERLAPPED*)&session->disconnectOverlapped_, TF_REUSE_SOCKET, 0);
+
+		if (ret == FALSE)
+		{
+			int error = WSAGetLastError();
+
+			if (error == ERROR_IO_PENDING)
+			{
+				return;
+			}
+			else
+			{
+				wprintf(L"DisconnectEx failed with error: %d\n", error);
+				__debugbreak();
+			}
+		}
 	}
 }
 
-uint64_t LanServer::AllocSession()
+
+uint64_t LanServer::AllocSessionId(Session* session)
 {
-	int index;
+	uint64_t index = session->sessionId_ >> 48;
 
 	//sessionMapLock_.lock();
 	//index = sessionIndex_.top();
 	//sessionIndex_.pop();
 	//sessionMapLock_.unlock();
 
-	sessionIndex_.Pop(index);
+	//sessionIndex_.Pop(index);
 
-	// idSeed_는 accept 스레드에서만 변경 가능
-	return ++idSeed_ | (static_cast<uint64_t>(index) << 48);
+	// idSeed_는 accept 스레드에서만 변경 가능 -> 이젠 아님
+
+	uint64_t id = ++idSeed_;
+
+	return id | (index << 48);
 }
 
 uint64_t LanServer::GetSessionId(uint64_t sessionId)

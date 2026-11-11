@@ -112,7 +112,7 @@ private:
 
 	inline static thread_local int tls_MapId_;
 
-	MemoryPool<Player> playerPool_;
+	MemoryPoolTls<Player> playerPool_;
 
 	//std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
 	//std::unordered_map<int64_t, Player*> playerMap_;

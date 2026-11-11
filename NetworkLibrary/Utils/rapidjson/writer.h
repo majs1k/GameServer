@@ -270,9 +270,9 @@ public:
         \param length Length of the json.
         \param type Type of the root of json.
     */
-    bool RawValue(const Ch* json, size_t length, Type type) {
+    bool RawValue(const Ch* json, size_t length, Type type_) {
         RAPIDJSON_ASSERT(json != 0);
-        Prefix(type);
+        Prefix(type_);
         return EndValue(WriteRawValue(json, length));
     }
 
@@ -476,8 +476,8 @@ protected:
         return true;
     }
 
-    void Prefix(Type type) {
-        (void)type;
+    void Prefix(Type type_) {
+        (void)type_;
         if (RAPIDJSON_LIKELY(level_stack_.GetSize() != 0)) { // this value is not at root
             Level* level = level_stack_.template Top<Level>();
             if (level->valueCount > 0) {
@@ -487,7 +487,7 @@ protected:
                     os_->Put((level->valueCount % 2 == 0) ? ',' : ':');
             }
             if (!level->inArray && level->valueCount % 2 == 0)
-                RAPIDJSON_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
+                RAPIDJSON_ASSERT(type_ == kStringType);  // if it's in object, then even number should be a name
             level->valueCount++;
         }
         else {

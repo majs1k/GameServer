@@ -343,11 +343,11 @@
 #if RAPIDJSON_64BIT != 1
 #error RAPIDJSON_48BITPOINTER_OPTIMIZATION can only be set to 1 when RAPIDJSON_64BIT=1
 #endif
-#define RAPIDJSON_SETPOINTER(type, p, x) (p = reinterpret_cast<type *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(RAPIDJSON_UINT64_C2(0xFFFF0000, 0x00000000))) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
-#define RAPIDJSON_GETPOINTER(type, p) (reinterpret_cast<type *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(RAPIDJSON_UINT64_C2(0x0000FFFF, 0xFFFFFFFF))))
+#define RAPIDJSON_SETPOINTER(type_, p, x) (p = reinterpret_cast<type_ *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(RAPIDJSON_UINT64_C2(0xFFFF0000, 0x00000000))) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
+#define RAPIDJSON_GETPOINTER(type_, p) (reinterpret_cast<type_ *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(RAPIDJSON_UINT64_C2(0x0000FFFF, 0xFFFFFFFF))))
 #else
-#define RAPIDJSON_SETPOINTER(type, p, x) (p = (x))
-#define RAPIDJSON_GETPOINTER(type, p) (p)
+#define RAPIDJSON_SETPOINTER(type_, p, x) (p = (x))
+#define RAPIDJSON_GETPOINTER(type_, p) (p)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////

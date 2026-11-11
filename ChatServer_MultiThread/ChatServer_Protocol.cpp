@@ -19,7 +19,7 @@ void ChatServer::ProcessMessageQueue()
 		uint64_t sessionId = message->sessionId_;
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
-		
+
 		Player* player = message->player_;
 
 
@@ -128,12 +128,12 @@ void ChatServer::ProcessMessageQueue()
 
 void ChatServer::CreatePlayer(uint64_t sessionId)
 {
-	mapIdLock_.lock();
+	{
+		std::lock_guard<std::mutex> lock(mapIdLock_);
 
-	/// mapId 추가
-	sessionIdToMapId_[sessionId] = INITIAL_MAP_ID;
-
-	mapIdLock_.unlock();
+		/// mapId 추가
+		sessionIdToMapId_[sessionId] = INITIAL_MAP_ID;
+	}
 
 	Message* message = messagePool_.Alloc();
 	//Message* message = new Message();
@@ -145,24 +145,23 @@ void ChatServer::CreatePlayer(uint64_t sessionId)
 
 void ChatServer::RemovePlayer(uint64_t sessionId)
 {
-	mapIdLock_.lock();
+	int mapId;
 
-	auto it = sessionIdToMapId_.find(sessionId);
-
-	if (it == sessionIdToMapId_.end())
 	{
-		mapIdLock_.unlock();
+		std::lock_guard<std::mutex> lock(mapIdLock_);
 
-		return;
+		auto it = sessionIdToMapId_.find(sessionId);
+
+		if (it == sessionIdToMapId_.end())
+		{
+			return;
+		}
+
+		mapId = it->second;
+
+		/// mapId 먼저 확인 후 삭제
+		sessionIdToMapId_.erase(sessionId);
 	}
-
-	int mapId = it->second;
-
-	/// mapId 먼저 확인 후 삭제
-	sessionIdToMapId_.erase(sessionId);
-
-	mapIdLock_.unlock();
-
 
 	Message* message = messagePool_.Alloc();
 	//Message* message = new Message();

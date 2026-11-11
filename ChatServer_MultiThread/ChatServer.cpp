@@ -79,20 +79,20 @@ void ChatServer::OnRelease(uint64_t sessionId)
 
 void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
-	mapIdLock_.lock();
+	int mapId;
 
-	auto it = sessionIdToMapId_.find(sessionId);
-
-	if (it == sessionIdToMapId_.end())
 	{
-		mapIdLock_.unlock();
+		std::lock_guard<std::mutex> lock(mapIdLock_);
 
-		return;
+		auto it = sessionIdToMapId_.find(sessionId);
+
+		if (it == sessionIdToMapId_.end())
+		{
+			return;
+		}
+
+		mapId = it->second;
 	}
-
-	int mapId = it->second;
-
-	mapIdLock_.unlock();
 
 
 
