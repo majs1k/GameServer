@@ -13,6 +13,7 @@
 //-------------------------------------------------------------------------
 #pragma once
 #include <fstream>
+#include <mutex>
 #include "Singleton.h"
 #include <Windows.h>
 
@@ -32,6 +33,8 @@ class Logger : public Singleton<Logger>
 private:
 	std::wofstream fout_;
 	WCHAR fileName_[MAX_PATH];
+
+	std::mutex lock_;
 
 public:
 	Logger()
@@ -95,8 +98,21 @@ public:
 			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
 			threadId, levelStr, userMessage);
 
-		//std::wcout << finalMessage;
-		fout_ << finalMessage;
-		fout_.flush();
+		{
+			std::lock_guard<std::mutex> lock(lock_);
+
+			//std::wcout << finalMessage;
+			fout_ << finalMessage;
+			fout_.flush();
+
+			if (fout_.bad())
+			{
+				__debugbreak();
+			}
+			else if (fout_.fail())
+			{
+				__debugbreak();
+			}
+		}
 	}
 };

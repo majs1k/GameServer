@@ -1,5 +1,5 @@
 #include "ChatServer.h"
-
+#include "Utils/Logger.h"
 
 void ChatServer::ProcessMessageQueue()
 {
@@ -17,8 +17,6 @@ void ChatServer::ProcessMessageQueue()
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
 
-		int test = 0;
-
 		switch (protocol)
 		{
 		case CS_NETWORK_PACKET:
@@ -28,7 +26,7 @@ void ChatServer::ProcessMessageQueue()
 			{
 				Disconnect(sessionId);
 
-				test = 1;
+				//LOG(L"packetproc error");
 			}
 
 			messageCount_CS_NETWORK_PACKET_++;
@@ -71,15 +69,6 @@ void ChatServer::ProcessMessageQueue()
 		{
 			Player* player = it->second;
 			player->lastRecvTime_ = GetTickCount64();
-		}
-
-		/// TODO: 헤더 길이가 잘못 들어오는 상황을 어떻게 대처할지?
-		if (packet != nullptr)
-		{
-			if (packet->IsError())
-			{
-				Disconnect(sessionId);
-			}
 		}
 
 		if (packet != nullptr)

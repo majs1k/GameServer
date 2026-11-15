@@ -219,7 +219,7 @@ struct SessionKey
 struct Chat
 {
 	short len_;
-	wchar_t chat_[100];
+	wchar_t chat_[100] = {};
 
 	Chat() = default;
 

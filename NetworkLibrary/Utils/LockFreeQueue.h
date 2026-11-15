@@ -199,29 +199,29 @@ public:
 		return size_;
 	}
 
-	void Clear()
-	{
-		uint64_t current = front_;
-		Node* node = GetPtr(current);
+	//void Clear()
+	//{
+	//	uint64_t current = front_;
+	//	Node* node = GetPtr(current);
 
-		// 현재 더미 노드부터 연결된 노드를 순회하며 해제
-		while (1)
-		{
-			uint64_t next = node->next_;
+	//	// 현재 더미 노드부터 연결된 노드를 순회하며 해제
+	//	while (1)
+	//	{
+	//		uint64_t next = node->next_;
 
-			if (next == 0)
-			{
-				front_ = rear_ = current;
-				break;
-			}
+	//		if (next == 0)
+	//		{
+	//			front_ = rear_ = current;
+	//			break;
+	//		}
 
-			//delete node;
-			pool_<T>.Free(node);
+	//		//delete node;
+	//		pool_<T>.Free(node);
 
-			current = next;
-			node = GetPtr(next);
-		}
+	//		current = next;
+	//		node = GetPtr(next);
+	//	}
 
-		size_ = 0;
-	}
+	//	size_ = 0;
+	//}
 };

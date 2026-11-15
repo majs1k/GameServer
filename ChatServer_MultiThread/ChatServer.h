@@ -25,7 +25,7 @@ private:
 		Nickname nickname_;
 
 		bool isLogin_;
-		bool isInitSector_ ;
+		bool isInitSector_;
 		uint64_t lastRecvTime_;
 
 		// 0 ~ 49
@@ -35,6 +35,9 @@ private:
 		// 0 ~ 24
 		//unsigned short mapX_;
 		//unsigned short mapY_;
+
+		/// Ãß°¡
+		int mapId_;
 
 		void Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname);
 		void Initialize(uint64_t sessionId);
@@ -48,12 +51,11 @@ private:
 		ushort protocol_;
 		Player* player_;
 
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol, Player* player = nullptr)
+		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
 		{
 			sessionId_ = sessionId;
 			packet_ = packet;
 			protocol_ = protocol;
-			player_ = player;
 		}
 	};
 
@@ -64,9 +66,8 @@ private:
 		SS_REMOVE_PLAYER = 2,
 		SS_CHECK_TIMEOUT = 3,
 
-		SS_SECTOR_MOVE	= 4,
-		SS_CHAT			= 5,
-
+		SS_SECTOR_MOVE = 4,
+		SS_CHAT = 5,
 	};
 
 public:
@@ -89,6 +90,7 @@ private:
 
 
 	constexpr static int MAP_COUNT = 4;
+	constexpr static int INITIAL_MAP_ID = 0;
 
 	std::thread logicThread_[MAP_COUNT];
 	std::thread schedulerThread_;
@@ -114,16 +116,13 @@ private:
 
 	MemoryPoolTls<Player> playerPool_;
 
-	//std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
+
+	std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
+	std::mutex sessionIdToPlayerLock_;
+
 	//std::unordered_map<int64_t, Player*> playerMap_;
-	inline static thread_local std::unordered_map<uint64_t, Player*> tls_SessionIdToPlayer_;
 	inline static thread_local std::unordered_map<int64_t, Player*> tls_PlayerMap_;
 
-
-	std::unordered_map<uint64_t, int> sessionIdToMapId_;
-	std::mutex mapIdLock_;
-
-	constexpr static int INITIAL_MAP_ID = 0;
 
 	int playerCount_ = 0;
 
@@ -192,7 +191,7 @@ private:
 	// MultiThread
 	// ===================================================================================== //
 
-	void SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY, Player* player);
+	void SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
 
 	void SS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat, std::vector<unsigned short>& sectorX, std::vector<unsigned short>& sectorY);
 

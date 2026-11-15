@@ -27,9 +27,12 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	auto it2 = playerMap_.find(playerId);
 
 	// 중복 접속 시 기존 접속만 종료
+	// 더미를 로컬에서 테스트시 발생 불가 (RST 유실이 원인인데 로컬에선 불가)
 	if (it2 != playerMap_.end())
 	{
+		/// TODO: 수정완료. 확인후 삭제
 		Player* alreadyLoginedPlayer = playerMap_[playerId];
+		//Player* alreadyLoginedPlayer = it2->second;
 
 		alreadyLoginedPlayer->isLogin_ = false;
 		playerCount_--;
@@ -144,6 +147,15 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 		return false;
 	}
 
+	/// 로그를 찍는 순간 해당 문제가 안나옴....
+	//wchar_t str[100];
+	//wcscpy_s(str, 100, chat.chat_);
+	//str[chat.len_ / sizeof(wchar_t)] = L'\0';
+	//LOG(L"%d : %s", playerId, str);
+
+
+
+
 	//unsigned int now = GetTickCount();
 
 	//// 1초 내에 다시 채팅 보냈을시
@@ -171,9 +183,10 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	std::vector<uint64_t> sessionIds;
 
-	for (int i = 0; i < 3; i++)
+	/// TODO: 원상복구
+	for (int i = 0; i < 1; i++)
 	{
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < 1; j++)
 		{
 			unsigned short sectorNX = player->sectorX_ + dx[i];
 			unsigned short sectorNY = player->sectorY_ + dy[j];

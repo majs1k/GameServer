@@ -47,3 +47,50 @@ public:
 		return queue_.size();
 	}
 };
+
+#include <stack>
+
+template<typename T>
+class LockStack
+{
+private:
+
+	std::stack<T> stack_;
+	std::mutex lock_;
+
+public:
+
+	void Push(T value)
+	{
+		lock_.lock();
+
+		stack_.push(value);
+
+		lock_.unlock();
+	}
+
+	bool Pop(T& value)
+	{
+		lock_.lock();
+
+		if (stack_.empty())
+		{
+			lock_.unlock();
+
+			return false;
+		}
+
+		value = stack_.top();
+
+		stack_.pop();
+
+		lock_.unlock();
+
+		return true;
+	}
+
+	int Size()
+	{
+		return stack_.size();
+	}
+};

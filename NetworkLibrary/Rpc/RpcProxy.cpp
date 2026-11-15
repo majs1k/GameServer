@@ -10,7 +10,7 @@ void RpcProxy::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginI
     *packet << static_cast<unsigned short>(1);
     *packet << playerId << loginId << nickname << sessionKey;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -23,7 +23,7 @@ void RpcProxy::SC_ResLogin(uint64_t sessionId, byte status, int64_t playerId)
     *packet << static_cast<unsigned short>(2);
     *packet << status << playerId;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -36,7 +36,7 @@ void RpcProxy::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sec
     *packet << static_cast<unsigned short>(3);
     *packet << playerId << sectorX << sectorY;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -49,7 +49,7 @@ void RpcProxy::SC_ResSectorMove(uint64_t sessionId, int64_t playerId, ushort sec
     *packet << static_cast<unsigned short>(4);
     *packet << playerId << sectorX << sectorY;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -62,7 +62,7 @@ void RpcProxy::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
     *packet << static_cast<unsigned short>(5);
     *packet << playerId << chat;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -75,7 +75,7 @@ void RpcProxy::SC_ResChat(uint64_t sessionId, int64_t playerId, LoginId& loginId
     *packet << static_cast<unsigned short>(6);
     *packet << playerId << loginId << nickname << chat;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -88,7 +88,7 @@ void RpcProxy::CS_ReqHeartbeat(uint64_t sessionId)
     *packet << static_cast<unsigned short>(7);
     *packet;
 
-    server_->SendPacket(sessionId, packet);
+    serverProxy_->SendPacket(sessionId, packet);
 
     packet->Free();
 }
@@ -104,7 +104,7 @@ void RpcProxy::CS_ReqLogin(std::vector<uint64_t>& sessionIds, int64_t playerId, 
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -120,7 +120,7 @@ void RpcProxy::SC_ResLogin(std::vector<uint64_t>& sessionIds, byte status, int64
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -136,7 +136,7 @@ void RpcProxy::CS_ReqSectorMove(std::vector<uint64_t>& sessionIds, int64_t playe
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -152,7 +152,7 @@ void RpcProxy::SC_ResSectorMove(std::vector<uint64_t>& sessionIds, int64_t playe
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -168,7 +168,7 @@ void RpcProxy::CS_ReqChat(std::vector<uint64_t>& sessionIds, int64_t playerId, C
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -184,7 +184,7 @@ void RpcProxy::SC_ResChat(std::vector<uint64_t>& sessionIds, int64_t playerId, L
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();
@@ -200,7 +200,7 @@ void RpcProxy::CS_ReqHeartbeat(std::vector<uint64_t>& sessionIds)
 
     for (auto& sessionId : sessionIds)
 	{
-		server_->SendPacket(sessionId, packet);
+		serverProxy_->SendPacket(sessionId, packet);
 	}
 
     packet->Free();

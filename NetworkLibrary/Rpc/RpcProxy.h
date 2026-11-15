@@ -8,7 +8,7 @@ class RpcProxy
 {
 public:
 
-    NetServer* server_;
+    NetServer* serverProxy_;
 
 public:
 

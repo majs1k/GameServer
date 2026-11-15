@@ -1,5 +1,3 @@
-#pragma comment(lib, "Mswsock.lib")
-
 #include "LanServer.h"
 #include "../Utils/Packet.h"
 #include "../Utils/Logger.h"
@@ -40,12 +38,31 @@ void LanServer::RecvPost(Session* session)
 		{
 			//printf("recv() Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED)
+		else if (error == WSAECONNRESET || error == WSAESHUTDOWN)
 		{
 			ReleaseSession(session);
 
 			return;
 		}
+		// 서버에서 closesocket 호출시
+		else if (error == WSAENOTSOCK)
+		{
+			__debugbreak();
+
+			ReleaseSession(session);
+
+			return;
+		}
+
+		else if (error == WSAECONNABORTED)
+		{
+			__debugbreak();
+
+			ReleaseSession(session);
+
+			return;
+		}
+
 		else
 		{
 			LOG(L"WSARecv() error: %d", error);
@@ -66,6 +83,8 @@ void LanServer::RecvPost(Session* session)
 
 void LanServer::CompleteRecv(Session* session, int numOfBytes)
 {
+	//PRO(L"CompleteRecv");
+
 	session->recvQueue_.MoveRear(numOfBytes);
 
 	if (session->recvQueue_.IsFull())
@@ -89,24 +108,31 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 
 		session->recvQueue_.Peek((char*)&header, sizeof(header));
 
+
 		int bodySize = header.size_;
 
 		if (bodySize < 0)
-			break;
+		{
+			LOG_INFO(L"body size minus error");
+
+			ReleaseSession(session);
+
+			return;
+		}
 
 		if (useSize < sizeof(header) + bodySize)
 			break;
 
 		//Packet* packet = new Packet();
 		Packet* packet = packetPool_.Alloc();
-		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
-		packet->Initialize(sizeof(LAN_HEADER));
+		packet->Initialize(sizeof(header));
 
 		// 헤더 + 바디 전부 디큐
 		session->recvQueue_.Dequeue(packet->GetHeaderPtr(), sizeof(header) + bodySize);
 
 		// 메세지 사이즈만큼만 무브
 		packet->MoveWritePos(bodySize);
+
 
 		recvMessageCount_++;
 
@@ -115,18 +141,13 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 		packet->Free();
 	}
 
-	// WSARecv() 이전에 호출
-	//InterlockedIncrement(&session->ioCount_);
-	LONG result = AddSessionCount(session);
-	if (result == -1)
-	{
-		return;
-	}
+	InterlockedIncrement(&session->ioCount_);
 
 	RecvPost(session);
 
 	ReleaseSession(session);
 }
+
 
 
 //void LanServer::RecvPost(Session* session)
@@ -175,8 +196,9 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //{
-//	PRO(L"CompleteRecv");
+//	//PRO(L"CompleteRecv");
 //
+//	/// 수정 필요 (지금 패킷 수신중이라 계속 쪼개져서 와서 이걸론 확인 불가)
 //	if (numOfBytes >= PACKET_CAPACITY)
 //	{
 //		LOG_INFO(L"recvQueue full");
@@ -198,33 +220,57 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //	while (1)
 //	{
-//		if (remainBytes < sizeof(LAN_HEADER))
+//		if (remainBytes < sizeof(NET_HEADER))
 //		{
 //			break;
 //		}
 //
-//		int bodySize = reinterpret_cast<LAN_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
+//		/// 코드 확인
+//		unsigned char code = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->code_;
 //
-//		if (bodySize < 0)
+//		if (code != NET_CODE)
 //		{
-//			LOG_INFO(L"recv size error");
+//			LOG_INFO(L"recv code error");
 //
 //			ReleaseSession(session);
 //
 //			return;
 //		}
 //
-//		if (remainBytes < sizeof(LAN_HEADER) + bodySize)
+//		int bodySize = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
+//
+//		if (bodySize < 0)
+//		{
+//			LOG_INFO(L"recv size error");
+//		
+//			ReleaseSession(session);
+//
+//			return;
+//		}
+//
+//		if (remainBytes < sizeof(NET_HEADER) + bodySize)
 //		{
 //			break;
 //		}
 //
 //		if (!completeFirstLoop)
 //		{
-//			session->recvPacket_->MoveWritePos(sizeof(LAN_HEADER) + bodySize);
-//			session->recvPacket_->MoveReadPos(sizeof(LAN_HEADER) );
+//			session->recvPacket_->MoveWritePos(sizeof(NET_HEADER) + bodySize);
+//			session->recvPacket_->MoveReadPos(sizeof(NET_HEADER));
 //
-//			processedBytes += (sizeof(LAN_HEADER) + bodySize);
+//			/// 디코딩
+//			session->recvPacket_->Decoding();
+//
+//			if (!session->recvPacket_->IsValidChecksum())
+//			{
+//				LOG_INFO(L"recv checksum error");
+//
+//				ReleaseSession(session);
+//
+//				return;
+//			}
+//
+//			processedBytes += (sizeof(NET_HEADER) + bodySize);
 //			remainBytes = totalBytes - processedBytes;
 //
 //			++recvMessageCount_;
@@ -236,12 +282,26 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //		else
 //		{
 //			Packet* packet = packetPool_.Alloc();
-//			packet->Clear(sizeof(LAN_HEADER));
+//			packet->Clear(sizeof(NET_HEADER));
 //
-//			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(LAN_HEADER) + bodySize);
-//			packet->MoveReadPos(sizeof(LAN_HEADER) );
+//			packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, sizeof(NET_HEADER) + bodySize);
+//			packet->MoveReadPos(sizeof(NET_HEADER));
 //
-//			processedBytes += (sizeof(LAN_HEADER) + bodySize);
+//			/// 디코딩
+//			packet->Decoding();
+//
+//			if (!packet->IsValidChecksum())
+//			{
+//				LOG_INFO(L"recv checksum error");
+//
+//				ReleaseSession(session);
+//
+//				packet->Free();
+//
+//				return;
+//			}
+//
+//			processedBytes += (sizeof(NET_HEADER) + bodySize);
 //			remainBytes = totalBytes - processedBytes;
 //
 //			++recvMessageCount_;
@@ -253,26 +313,25 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 //	}
 //
 //	Packet* newPacket = packetPool_.Alloc();
-//	newPacket->Clear(sizeof(LAN_HEADER));
+//	newPacket->Clear(sizeof(NET_HEADER));
 //
 //	if (remainBytes > 0)
+//	{
 //		newPacket->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, remainBytes);
+//	}
 //
 //	session->recvPacket_->Free();
 //	session->recvPacket_ = newPacket;
 //
 //	// WSARecv() 이전에 호출
-//	//InterlockedIncrement(&session->ioCount_);
-//	LONG result = AddSessionCount(session);
-//	if (result == -1)
-//	{
-//		return;
-//	}
+//	InterlockedIncrement(&session->ioCount_);
 //
 //	RecvPost(session);
 //
 //	ReleaseSession(session);
 //}
+
+
 
 
 #define MAX_WSABUF 100
@@ -309,12 +368,8 @@ void LanServer::SendPost(Session* session)
 		session->sendPostQueue_.Enqueue(packet);
 	}
 
-	//InterlockedIncrement(&session->ioCount_);
-	LONG result = AddSessionCount(session);
-	if (result == -1)
-	{
-		return;
-	}
+
+	InterlockedIncrement(&session->ioCount_);
 
 
 	// wsaBuf count가 0이면 10022 에러 발생함
@@ -328,7 +383,7 @@ void LanServer::SendPost(Session* session)
 		{
 			//printf("send Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAENOTSOCK)
+		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAENOTSOCK || error == WSAESHUTDOWN)
 		{
 			ReleaseSession(session);
 
@@ -376,52 +431,52 @@ void LanServer::CompleteSend(Session* session, int numOfBytes)
 }
 
 
-LONG LanServer::AddSessionCount(Session* session)
-{
-	/// -1 반환시 ioCount 증가 실패
-	if (session->isDisconnected_)
-		return -1;
-
-	LONG count = InterlockedIncrement(&session->ioCount_);
-
-	return count;
-}
-
-
 void LanServer::ReleaseSession(Session* session)
 {
 	if (InterlockedDecrement(&session->ioCount_) == 0)
 	{
-		if (InterlockedCompareExchange(&session->ioCount_, session->ioCount_ | RELEASE_FLAG, 0) != 0)
+		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_MASK, 0) != 0)
 			return;
-
-		//if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
-		//	return;
 
 		OnRelease(session->sessionId_);
 
 		InterlockedDecrement(&sessionCount_);
 
 
+		/// 기본용
+		closesocket(session->socket_);
+
+
+		/// 추가
+		session->Clear();
+
+
+
+		int index = GetSessionIndex(session->sessionId_);
+		sessionIndexPool_.Push(index);
+
+
+
+
 		/// 소켓 연결 종료 (세션 사용 끝)
-		ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+		//ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
-		BOOL ret = lpfnDisconnectex_(session->socket_, (OVERLAPPED*)&session->disconnectOverlapped_, TF_REUSE_SOCKET, 0);
+		//BOOL ret = lpfnDisconnectex_(session->socket_, (OVERLAPPED*)&session->disconnectOverlapped_, TF_REUSE_SOCKET, 0);
 
-		if (ret == FALSE)
-		{
-			int error = WSAGetLastError();
+		//if (ret == FALSE)
+		//{
+		//	int error = WSAGetLastError();
 
-			if (error == ERROR_IO_PENDING)
-			{
-				return;
-			}
-			else
-			{
-				wprintf(L"DisconnectEx failed with error: %d\n", error);
-				__debugbreak();
-			}
-		}
+		//	if (error == ERROR_IO_PENDING)
+		//	{
+		//		return;
+		//	}
+		//	else
+		//	{
+		//		wprintf(L"DisconnectEx failed with error: %d\n", error);
+		//		__debugbreak();
+		//	}
+		//}
 	}
 }
 
@@ -429,15 +484,6 @@ void LanServer::ReleaseSession(Session* session)
 uint64_t LanServer::AllocSessionId(Session* session)
 {
 	uint64_t index = session->sessionId_ >> 48;
-
-	//sessionMapLock_.lock();
-	//index = sessionIndex_.top();
-	//sessionIndex_.pop();
-	//sessionMapLock_.unlock();
-
-	//sessionIndex_.Pop(index);
-
-	// idSeed_는 accept 스레드에서만 변경 가능 -> 이젠 아님
 
 	uint64_t id = ++idSeed_;
 

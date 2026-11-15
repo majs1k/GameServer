@@ -11,6 +11,8 @@
 #include "CommonProtocol.h"
 #include "RPC/RpcStub.h"
 
+#include <map>
+
 
 class ChatServer : public NetServer, public RpcStub
 {
@@ -96,7 +98,6 @@ private:
 private:
 
 	MemoryPoolTls<Message> messagePool_;
-
 	LockFreeQueue<Message*> messageQueue_;
 
 	//MemoryPoolTls<Player> playerPool_;
@@ -107,14 +108,12 @@ private:
 	std::unordered_map<int64_t, Player*> playerMap_;
 	int playerCount_ = 0;
 
-
 	constexpr static int SECTOR_WIDTH = 50;
 	constexpr static int SECTOR_HEIGHT = 50;
-
-	std::list<Player*> sector_[SECTOR_HEIGHT][SECTOR_WIDTH];
-
 	constexpr static int dx[3] = { 0, 1, -1 };
 	constexpr static int dy[3] = { 0, 1, -1 };
+
+	std::list<Player*> sector_[SECTOR_HEIGHT][SECTOR_WIDTH];
 
 	// ===================================================================================== //
 	// Protocol
@@ -134,12 +133,9 @@ private:
 
 
 	std::atomic<int> procMessageCount_ = 0;
-
 	std::atomic<int> messageCount_CS_NETWORK_PACKET_ = 0;
-
 	std::atomic<int> messageCount_SS_CreatePlayer_ = 0;
 	std::atomic<int> messageCount_SS_RemovePlayer_ = 0;
-
 	std::atomic<int> dupLoginCountTotal_ = 0;
 	std::atomic<int> timeoutCountTotal_ = 0;
 
@@ -153,5 +149,4 @@ private:
 	bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
 	bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 	bool CS_ReqHeartbeat(uint64_t sessionId) override;
-
 };

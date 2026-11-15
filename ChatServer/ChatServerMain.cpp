@@ -26,8 +26,8 @@ int main()
 			__debugbreak();
 			break;
 		}
-
-		//if (GetAsyncKeyState('X') & 0x0001)
+			
+		//else if (GetAsyncKeyState('X') & 0x0001)
 		//	break;
 
 		//else if (GetAsyncKeyState(VK_SPACE) & 0x0001)

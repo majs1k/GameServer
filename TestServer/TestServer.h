@@ -57,5 +57,4 @@ private:
 	void Monitoring();
 
 	MemoryPoolTls<Message> messagePool_;
-
 };

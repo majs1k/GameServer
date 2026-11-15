@@ -32,28 +32,37 @@ LanServer::Session::~Session()
 void LanServer::Session::Initialize(uint64_t sessionId, std::string& ip, int port)
 {
 	//socket_ = socket;
-	sessionId_ =  sessionId;
+	sessionId_ = sessionId;
 
 	ip_ = ip;
 	port_ = port;
 
-	sendQueue_.Clear();
-	sendPostQueue_.Clear();
+	//sendQueue_.Clear();
+	//sendPostQueue_.Clear();
 
-	recvQueue_.Clear();
-	//recvPacket_->Clear(sizeof(LAN_HEADER));
-
+	//recvQueue_.Clear();
+	////recvPacket_->Clear(sizeof(LAN_HEADER));
 
 	// 초기화시 참조 카운트를 1로 시작
 	ioCount_ = 1;
 	sendPending_ = false;
-
-	isDisconnected_ = false;
 }
 
 void LanServer::Session::Clear()
 {
-	sendQueue_.Clear();
+	//sendQueue_.Clear();
+	while (1)
+	{
+		Packet* packet;
+
+		bool ret = sendQueue_.Dequeue(packet);
+
+		if (ret == false)
+			break;
+
+		//delete p;
+		packet->Free();
+	}
 
 	//sendPostQueue_.Clear();
 	while (1)
@@ -129,10 +138,10 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//setsockopt(listenSocket_, SOL_SOCKET, SO_SNDBUF, (const char*)(&sndBufSize), sizeof(sndBufSize));
 
 
-	hIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
+	hNetworkIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
 
 	/// 리슨소켓을 IOCP에 등록
-	CreateIoCompletionPort((HANDLE)listenSocket_, hIOCP_, (u_long)0, 0);
+	CreateIoCompletionPort((HANDLE)listenSocket_, hNetworkIOCP_, (u_long)0, 0);
 
 
 	SOCKADDR_IN serverAddr;
@@ -181,31 +190,42 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	}
 
 
-	sessions_ = new Session*[sessionMax_];
-
-	for (int i = 0; i < sessionMax_; i++)
-	{
-		/// 세션 생성 및 인덱스 설정
-		sessions_[i] = new Session();
-		sessions_[i]->sessionId_ = static_cast<uint64_t>(i) << 48;
-
-		/// 소켓 생성
-		SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		sessions_[i]->socket_ = acceptSocket;
-	}
-
-	for (int i = 0; i < sessionMax_; i++)
-	{
-		Session* session = sessions_[i];
-
-		/// AccceptEx 호출
-		AcceptPost(session);
-	}
+	//sessions_ = new Session * [sessionMax_];
 
 	//for (int i = 0; i < sessionMax_; i++)
 	//{
-	//	sessionIndex_.Push(sessionMax_ - i - 1);
+	//	/// 세션 생성 및 인덱스 설정
+	//	sessions_[i] = new Session();
+	//	sessions_[i]->sessionId_ = static_cast<uint64_t>(i) << 48;
+
+	//	/// 소켓 생성
+	//	SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	//	sessions_[i]->socket_ = acceptSocket;
 	//}
+
+	//for (int i = 0; i < sessionMax_; i++)
+	//{
+	//	Session* session = sessions_[i];
+
+	//	/// AccceptEx 호출
+	//	AcceptPost(session);
+	//}
+
+
+	/// 기본용
+	for (int i = 0; i < sessionMax_; i++)
+	{
+		sessionIndexPool_.Push(sessionMax_ - i - 1);
+	}
+
+	for (int i = 0; i < sessionMax_; i++)
+	{
+		sessions_[i] = new Session();
+	}
+
+	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
+
+
 
 	for (int i = 0; i < workerCount_; i++)
 	{
@@ -213,24 +233,24 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 		hWorkerThread_.push_back(hThread);
 	}
 
-	//hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
 	LOG_INFO(L"[NETWORK] server start");
 
 	return true;
 }
 
+
 void LanServer::Stop()
 {
 	// accept thread 종료
 	closesocket(listenSocket_);
-	//WaitForSingleObject(hAcceptThread_, INFINITE);
-	//CloseHandle(hAcceptThread_);
+	WaitForSingleObject(hAcceptThread_, INFINITE);
+	CloseHandle(hAcceptThread_);
 
 	// worker thread 종료
 	for (int i = 0; i < workerCount_; i++)
 	{
-		PostQueuedCompletionStatus(hIOCP_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(hNetworkIOCP_, 0, 0, nullptr);
 	}
 
 	WaitForMultipleObjects(workerCount_, hWorkerThread_.data(), TRUE, INFINITE);
@@ -254,7 +274,7 @@ void LanServer::Stop()
 	//sessionIndex_.Clear();
 
 	// IOCP 삭제
-	CloseHandle(hIOCP_);
+	CloseHandle(hNetworkIOCP_);
 
 	LOG_INFO(L"[NETWORK] server exit");
 }
@@ -267,9 +287,9 @@ bool LanServer::Disconnect(uint64_t sessionId)
 	// 세션 보장용 카운트 증가
 	int count = InterlockedIncrement(&session->ioCount_);
 
-	if (count & RELEASE_FLAG)
+	if (count & RELEASE_MASK)
 	{
-		//ReleaseSession(session);
+		ReleaseSession(session);
 
 		return false;
 	}
@@ -283,8 +303,9 @@ bool LanServer::Disconnect(uint64_t sessionId)
 		return false;
 	}
 
-	/// 연결 종료 플래그 활성화
-	session->isDisconnected_ = true;
+
+	shutdown(session->socket_, SD_BOTH);
+
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -301,9 +322,9 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	// 세션 보장용 카운트 증가
 	int count = InterlockedIncrement(&session->ioCount_);
 
-	if (count & RELEASE_FLAG)
+	if (count & RELEASE_MASK)
 	{
-		//ReleaseSession(session);
+		ReleaseSession(session);
 
 		return false;
 	}
@@ -318,8 +339,9 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	}
 
 
-	///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
 	packet->SetLanHeader();
+
+
 
 	/// char* 링버퍼 용도
 	//session->sendQueue_.Enqueue(packet->GetBufferPtr(), packet->TotalUseSize());
@@ -331,7 +353,7 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 
 	if (session->sendQueue_.Size() > 2000)
 	{
-		/// 어케 수정?
+		/// TODO: 어케 수정?
 		Disconnect(sessionId);
 
 		return false;
@@ -348,45 +370,46 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 }
 
 
-void LanServer::AcceptPost(Session* session)
+unsigned int __stdcall LanServer::AcceptThread(void* param)
 {
-	ZeroMemory(&session->acceptOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+	LanServer* server = (LanServer*)param;
 
-	/// AcceptEx 등록
-	BOOL ret = lpfnAcceptEx_(listenSocket_, session->socket_, session->acceptBuffer,
-		0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
-		nullptr, (WSAOVERLAPPED*)(&session->acceptOverlapped_));
+	server->AcceptFunc();
 
-	if (ret == FALSE)
+	return 0;
+}
+
+void LanServer::AcceptFunc()
+{
+	while (1)
 	{
-		int error = WSAGetLastError();
+		SOCKET clientSock = accept(listenSocket_, nullptr, nullptr);
+		if (clientSock == INVALID_SOCKET)
+		{
+			int error = WSAGetLastError();
 
-		if (error == ERROR_IO_PENDING)
-		{
-			return;
+			// 10038 WSAENOTSOCK
+			if (error == 10038)
+				break;
+
+			wprintf(L"accept() error: %d", error);
+
+			continue;
 		}
-		else
-		{
-			wprintf(L"AcceptEx failed with error: %d\n", error);
-			__debugbreak();
-		}
+
+		CompleteAccept(clientSock);
 	}
 }
 
-void LanServer::CompleteAccept(Session* session)
+void LanServer::CompleteAccept(SOCKET socket)
 {
 	acceptCount_++;
 	acceptCountTotal_++;
 
-	SOCKET acceptSocket = session->socket_;
-
-	/// 리슨소켓의 속성 상속
-	setsockopt(acceptSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&listenSocket_, sizeof(listenSocket_));
-
 	SOCKADDR_IN clientAddr;
 	int len = sizeof(clientAddr);
 
-	getpeername(acceptSocket, (SOCKADDR*)&clientAddr, &len);
+	getpeername(socket, (SOCKADDR*)&clientAddr, &len);
 
 	char str[16];
 	InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
@@ -396,23 +419,31 @@ void LanServer::CompleteAccept(Session* session)
 	// 허용되지 않은 ip와 port라면 바로 연결을 끊음
 	if (!OnConnectionRequest(ip, port))
 	{
-		closesocket(acceptSocket);
+		closesocket(socket);
 
 		return;
 	}
 
-	uint64_t sessionId = AllocSessionId(session);
-	
-	//Session* session = sessions[GetSessionIndex(sessionId)];
+	//sessionMapLock_.lock();
+	//index = sessionIndex_.top();
+	//sessionIndex_.pop();
+	//sessionMapLock_.unlock();
+
+	int index;
+	sessionIndexPool_.Pop(index);
+
+	uint64_t sessionId = ++idSeed_ | (static_cast<uint64_t>(index) << 48);
+
+	Session* session = sessions_[index];
 
 	session->Initialize(sessionId, ip, port);
+	session->socket_ = socket;
 
 	InterlockedIncrement(&(sessionCount_));
 
 	//LOG_INFO(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
 
-	/// AcceptEx 완료 후에 IOCP에 등록
-	CreateIoCompletionPort((HANDLE)acceptSocket, hIOCP_, (ULONG_PTR)session, 0);
+	CreateIoCompletionPort((HANDLE)socket, hNetworkIOCP_, (ULONG_PTR)session, 0);
 
 
 	OnAccept(session->sessionId_);
@@ -421,12 +452,88 @@ void LanServer::CompleteAccept(Session* session)
 }
 
 
-void LanServer::CompleteDisconnect(Session* session)
-{
-	session->Clear();
 
-	AcceptPost(session);
-}
+//void LanServer::AcceptPost(Session* session)
+//{
+//	ZeroMemory(&session->acceptOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+//
+//	/// AcceptEx 등록
+//	BOOL ret = lpfnAcceptEx_(listenSocket_, session->socket_, session->acceptBuffer,
+//		0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
+//		nullptr, (WSAOVERLAPPED*)(&session->acceptOverlapped_));
+//
+//	if (ret == FALSE)
+//	{
+//		int error = WSAGetLastError();
+//
+//		if (error == ERROR_IO_PENDING)
+//		{
+//			return;
+//		}
+//		else
+//		{
+//			wprintf(L"AcceptEx failed with error: %d\n", error);
+//			__debugbreak();
+//		}
+//	}
+//}
+//
+//void LanServer::CompleteAccept(Session* session)
+//{
+//	acceptCount_++;
+//	acceptCountTotal_++;
+//
+//	SOCKET acceptSocket = session->socket_;
+//
+//	/// 리슨소켓의 속성 상속
+//	setsockopt(acceptSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&listenSocket_, sizeof(listenSocket_));
+//
+//	SOCKADDR_IN clientAddr;
+//	int len = sizeof(clientAddr);
+//
+//	getpeername(acceptSocket, (SOCKADDR*)&clientAddr, &len);
+//
+//	char str[16];
+//	InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
+//	std::string ip = str;
+//	int port = ntohs(clientAddr.sin_port);
+//
+//	// 허용되지 않은 ip와 port라면 바로 연결을 끊음
+//	if (!OnConnectionRequest(ip, port))
+//	{
+//		closesocket(acceptSocket);
+//
+//		return;
+//	}
+//
+//	uint64_t sessionId = AllocSessionId(session);
+//
+//	//Session* session = sessions[GetSessionIndex(sessionId)];
+//
+//	session->Initialize(sessionId, ip, port);
+//
+//	InterlockedIncrement(&(sessionCount_));
+//
+//	//LOG_INFO(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
+//
+//	/// AcceptEx 완료 후에 IOCP에 등록
+//	CreateIoCompletionPort((HANDLE)acceptSocket, hIOCP_, (ULONG_PTR)session, 0);
+//
+//
+//	OnAccept(session->sessionId_);
+//
+//	RecvPost(session);
+//}
+//
+//
+//void LanServer::CompleteDisconnect(Session* session)
+//{
+//	session->Clear();
+//
+//	AcceptPost(session);
+//}
+
+
 
 
 unsigned int __stdcall LanServer::WorkerThread(void* param)
@@ -450,7 +557,7 @@ void LanServer::WorkerFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hIOCP_, &numOfBytes, (PULONG_PTR)&session, &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, (PULONG_PTR)&session, &overlapped_, INFINITE);
 
 		//PRO(L"GQCS()");
 
@@ -541,21 +648,25 @@ void LanServer::WorkerFunc()
 			CompleteSend(session, numOfBytes);
 		}
 
-		else if (type == IO_TYPE::ACCEPT)
-		{
-			/// Accept 완료 통지는 Completion Key로 listenSocket이 오므로 반드시 따로 처리
-			Session* sess = reinterpret_cast<Session*>(overlapped_);
+		//else if (type == IO_TYPE::ACCEPT)
+		//{
+		//	/// Accept 완료 통지는 Completion Key로 listenSocket이 오므로 반드시 따로 처리
+		//	Session* sess = reinterpret_cast<Session*>(overlapped_);
 
-			CompleteAccept(sess);
-		}
+		//	CompleteAccept(sess);
+		//}
 
-		else if (type == IO_TYPE::DISCONNECT)
+		//else if (type == IO_TYPE::DISCONNECT)
+		//{
+		//	CompleteDisconnect(session);
+		//}
+
+		else
 		{
-			CompleteDisconnect(session);
+			__debugbreak();
 		}
 	}
 }
-
 
 // ===================================================================
 // Socket Error Code

@@ -6,14 +6,20 @@
 
 bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
 {
-	auto it = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (it == tls_SessionIdToPlayer_.end())
 	{
-		return false;
-	}
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-	Player* player = it->second;
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return false;
+		}
+
+		player = it->second;
+	}
 
 	// 이미 로그인 완료 시 실패 패킷만 보냄
 	if (player->isLogin_)
@@ -29,7 +35,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	// 중복 접속 시 기존 접속 종료
 	if (it2 != tls_PlayerMap_.end())
 	{
-		Player* alreadyLoginedPlayer = tls_PlayerMap_[playerId];
+		Player* alreadyLoginedPlayer = it2->second;
 
 		alreadyLoginedPlayer->isLogin_ = false;
 		playerCount_--;
@@ -55,10 +61,12 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	// TODO: 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
-	tls_PlayerMap_.insert({ playerId, player });
-
 
 	playerCount_++;
+
+	/// 초기 맵에서 생성
+	tls_PlayerMap_.insert({ playerId, player });
+
 
 	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
 
@@ -67,14 +75,20 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
 {
-	auto it = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (it == tls_SessionIdToPlayer_.end())
 	{
-		return false;
-	}
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-	Player* player = it->second;
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return false;
+		}
+
+		player = it->second;
+	}
 
 	if (!player->isLogin_)
 		return false;
@@ -95,10 +109,7 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	}
 
 
-
-
-	int mapId = SectorToMapId(sectorX, sectorY);
-
+	int targetMapId = SectorToMapId(sectorX, sectorY);
 
 	if (player->isInitSector_)
 	{
@@ -113,11 +124,11 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 		player->isInitSector_ = true;
 	}
 
-	
-	if (mapId == tls_MapId_)
+
+	if (targetMapId == tls_MapId_)
 	{
 		player->sectorX_ = sectorX;
-		player->sectorY_ =sectorY;
+		player->sectorY_ = sectorY;
 
 		worldMap_[SectorToMapY(player->sectorY_)][SectorToMapX(player->sectorX_)].push_back(player);
 
@@ -127,17 +138,6 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	}
 	else
 	{
-		//mapIdLock_.lock();
-
-		//sessionIdToMapId_.erase(sessionId);
-
-		//sessionIdToMapId_[sessionId] = mapId;
-
-		//mapIdLock_.unlock();
-
-
-		/// TODO: 수정
-		tls_SessionIdToPlayer_.erase(sessionId);
 		tls_PlayerMap_.erase(player->playerId_);
 
 
@@ -150,9 +150,9 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 		*packet << playerId << sectorX << sectorY;
 
 		/// player 추가
-		message->Initialize(sessionId, packet, SS_SECTOR_MOVE, player);
+		message->Initialize(sessionId, packet, SS_SECTOR_MOVE);
 
-		messageQueue_[mapId].Enqueue(message);
+		messageQueue_[targetMapId].Enqueue(message);
 
 		return true;
 	}
@@ -160,14 +160,20 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 
 bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
-	auto it = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (it == tls_SessionIdToPlayer_.end())
 	{
-		return false;
-	}
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-	Player* player = it->second;
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return false;
+		}
+
+		player = it->second;
+	}
 
 	if (!player->isLogin_)
 		return false;
@@ -255,14 +261,20 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 bool ChatServer::CS_ReqHeartbeat(uint64_t sessionId)
 {
-	auto it = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (it == tls_SessionIdToPlayer_.end())
 	{
-		return false;
-	}
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-	Player* player = it->second;
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return false;
+		}
+
+		player = it->second;
+	}
 
 	if (!player->isLogin_)
 		return false;

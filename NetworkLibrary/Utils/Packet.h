@@ -549,6 +549,8 @@ public:
 	{
 		if (size <= 0 || readPos_ + size > writePos_)
 		{
+			//__debugbreak();
+
 			isError_ = true;
 
 			return 0;

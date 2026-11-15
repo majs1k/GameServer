@@ -65,7 +65,6 @@ private:
 		LONG ioCount_;
 		LONG sendPending_;
 
-		bool isDisconnected_;
 		char acceptBuffer[100];
 
 		//std::recursive_mutex sessionLock_;
@@ -84,7 +83,7 @@ private:
 	std::string serverIp_;
 	int serverPort_;
 
-	HANDLE hIOCP_;
+	HANDLE hNetworkIOCP_;
 	std::vector<HANDLE> hWorkerThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
@@ -93,10 +92,11 @@ private:
 	//std::unordered_map<__int64, Session*> sessionMap_;
 	//std::recursive_mutex sessionMapLock_;
 
-	Session** sessions_;
+	//Session** sessions_;
+	Session* sessions_[20000];
 
-	//std::stack<int> sessionIndex_;
-	//LockFreeStack<int> sessionIndexPool_;
+	//std::stack<int> sessionIndexPool_;
+	LockFreeStack<int> sessionIndexPool_;
 
 protected:
 
@@ -144,8 +144,10 @@ protected:
 
 private:
 
-	//static unsigned int __stdcall AcceptThread(void* param);
-	//void AcceptFunc();
+	static unsigned int __stdcall AcceptThread(void* param);
+	void AcceptFunc();
+	void CompleteAccept(SOCKET socket);
+
 
 	static unsigned int __stdcall WorkerThread(void* param);
 	void WorkerFunc();
@@ -155,15 +157,10 @@ private:
 
 	void CompleteDisconnect(Session* session);
 
-
 	LPFN_ACCEPTEX lpfnAcceptEx_;
-	LPFN_DISCONNECTEX  lpfnDisconnectex_;
+	LPFN_DISCONNECTEX lpfnDisconnectex_;
 
-	constexpr static int RELEASE_FLAG = 0x00010000;
-	
-	/// TODO: Á¦°Å?
-	//constexpr static int DISCONNECT_FLAG = 0x10000000;
-
+	constexpr static int RELEASE_MASK = 0x00010000;
 
 	void RecvPost(Session* session);
 	void CompleteRecv(Session* session, int numOfBytes);
@@ -171,7 +168,6 @@ private:
 	void SendPost(Session* session);
 	void CompleteSend(Session* session, int numOfBytes);
 
-	LONG AddSessionCount(Session* session);
 	void ReleaseSession(Session* session);
 
 protected:

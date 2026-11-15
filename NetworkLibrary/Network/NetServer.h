@@ -14,8 +14,11 @@
 #include "../Utils/LockFreeStack.h"
 #include "../Utils/LockFreeQueue.h"
 
+#include "../Utils/LockQueue.h"
+#include <map>
+
 #define SEND_SIZE				20000
-#define RECV_SIZE				1000
+#define RECV_SIZE				200
 
 class Packet;
 
@@ -39,8 +42,8 @@ private:
 
 	struct Session
 	{
-		OverlappedEx acceptOverlapped_;
-		OverlappedEx disconnectOverlapped_;
+		//OverlappedEx acceptOverlapped_;
+		//OverlappedEx disconnectOverlapped_;
 
 		SOCKET socket_;
 		// 고유값. sessionList의 인덱스로 활용 x (디버깅 용이)
@@ -53,7 +56,6 @@ private:
 		//RingBuffer sendQueue_{ SEND_SIZE };
 		//TRingBuffer<Packet*> sendQueue_;
 		LockFreeQueue<Packet*> sendQueue_;
-
 		TRingBuffer<Packet*> sendPostQueue_;
 
 		RingBuffer recvQueue_{ RECV_SIZE };
@@ -65,9 +67,8 @@ private:
 		LONG ioCount_;
 		LONG sendPending_;
 
-		char acceptBuffer[100];
-
 		//std::recursive_mutex sessionLock_;
+		char acceptBuffer[100];
 
 		Session();
 		~Session();
@@ -75,36 +76,6 @@ private:
 		void Initialize(uint64_t sessionId, std::string& ip, int port);
 		void Clear();
 	};
-
-private:
-
-	SOCKET listenSocket_;
-
-	std::string serverIp_;
-	int serverPort_;
-
-	HANDLE hIOCP_;
-	std::vector<HANDLE> hWorkerThread_;
-	HANDLE hAcceptThread_;
-	int concurrentCount_;
-	int workerCount_;
-
-	//std::unordered_map<__int64, Session*> sessionMap_;
-	//std::recursive_mutex sessionMapLock_;
-
-	//Session** sessions_;
-	Session* sessions_[20000];
-
-	//std::stack<int> sessionIndexPool_;
-	LockFreeStack<int> sessionIndexPool_;
-
-protected:
-
-	LONG sessionCount_ = 0;
-	int sessionMax_;
-
-	/// atomic 변경
-	std::atomic<uint64_t> idSeed_ = 0;
 
 public:
 
@@ -131,43 +102,78 @@ public:
 	//virtual void OnError(int errorCode, wchar_t* str) = 0;
 
 
+private:
+
+	SOCKET listenSocket_;
+	std::string serverIp_;
+	int serverPort_;
+
+	HANDLE hNetworkIOCP_;
+	std::vector<HANDLE> hWorkerThread_;
+	HANDLE hAcceptThread_;
+	int concurrentCount_;
+	int workerCount_;
+
+	//std::unordered_map<__int64, Session*> sessionMap_;
+	//std::recursive_mutex sessionMapLock_;
+
+	/// TODO: 수정
+	//Session** sessions_;
+	Session* sessions_[20000];
+
+	//std::stack<int> sessionIndexPool_;
+	LockFreeStack<int> sessionIndexPool_;
+
+protected:
+
+	LONG sessionCount_ = 0;
+	int sessionMax_;
+	std::atomic<uint64_t> idSeed_ = 0;
+
 protected:
 
 	bool shutdown_ = false;
-
-	std::atomic<int> acceptCount_;
-	std::atomic<int> recvMessageCount_;
-	std::atomic<int> sendMessageCount_;
-
+	std::atomic<int> acceptCount_ = 0;
+	std::atomic<int> recvMessageCount_ = 0;
+	std::atomic<int> sendMessageCount_ = 0;
 	std::atomic<int> acceptCountTotal_ = 0;
 	std::atomic<int> disconnectCountTotal_ = 0;
 
 private:
 
+	static unsigned int __stdcall WorkerThread(void* param);
+	void WorkerFunc();
+
+	constexpr static uint64_t SESSION_ID_MASK = 0x0000ffffffffffff;
+	constexpr static uint64_t SESSION_INDEX_MASK = 0xffff000000000000;
+	constexpr static int SESSION_INDEX_SHIFT = 48;
+	constexpr static int RELEASE_MASK = 0x00010000;
+
+private:
+	// ============================================================================
+	// Accept Thread
+	// ============================================================================
 	static unsigned int __stdcall AcceptThread(void* param);
 	void AcceptFunc();
 	void CompleteAccept(SOCKET socket);
 
-
-	static unsigned int __stdcall WorkerThread(void* param);
-	void WorkerFunc();
-
+	// ============================================================================
+	// AcceptEx
+	// ============================================================================
 	void AcceptPost(Session* session);
 	void CompleteAccept(Session* session);
-
 	void CompleteDisconnect(Session* session);
 
 	LPFN_ACCEPTEX lpfnAcceptEx_;
 	LPFN_DISCONNECTEX lpfnDisconnectex_;
 
-	constexpr static int RELEASE_FLAG = 0x00010000;
-
+	// ============================================================================
+	// Network
+	// ============================================================================
 	void RecvPost(Session* session);
 	void CompleteRecv(Session* session, int numOfBytes);
-
 	void SendPost(Session* session);
 	void CompleteSend(Session* session, int numOfBytes);
-
 	void ReleaseSession(Session* session);
 
 protected:
@@ -176,4 +182,32 @@ protected:
 	uint64_t AllocSessionId(Session* session);
 	uint64_t GetSessionId(uint64_t sessionId);
 	int GetSessionIndex(uint64_t sessionId);
+
+	// ============================================================================
+	// Send Thread
+	// ============================================================================
+
+private:
+
+	HANDLE hSendIOCP_;
+	std::vector<HANDLE> hSendThread_;
+
+	constexpr static int SEND_CONCURRENT_COUNT = 3;
+	constexpr static int SEND_WORKER_COUNT = 3;
+	
+	constexpr static int SEND_MESSAGE_NUM = 1;
+
+	static unsigned int __stdcall SendThread(void* param);
+	void SendFunc();
+
+
+	// ============================================================================
+	// 디버깅
+	// ============================================================================
+
+//public:
+//	LockStack<int> debugIndexPool_;
+//	inline static std::atomic<int> testcount = 0;
+//	// playerId -> sessionId
+//	std::map<int64_t, uint64_t> testset;
 };

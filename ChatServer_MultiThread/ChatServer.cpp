@@ -29,7 +29,8 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 
 ChatServer::ChatServer()
 {
-	g_RpcProxy.server_ = this;
+	g_RpcProxy.serverProxy_ = this;
+	serverStub_ = this;
 
 	for (int i = 0; i < MAP_COUNT; i++)
 	{
@@ -37,7 +38,6 @@ ChatServer::ChatServer()
 	}
 
 	schedulerThread_ = std::thread(SchedulerThread, this);
-
 	monitorThread_ = std::thread(MonitorThread, this);
 }
 
@@ -49,7 +49,6 @@ ChatServer::~ChatServer()
 	}
 
 	schedulerThread_.join();
-
 	monitorThread_.join();
 }
 
@@ -79,22 +78,20 @@ void ChatServer::OnRelease(uint64_t sessionId)
 
 void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
-	int mapId;
+	Player* player;
 
 	{
-		std::lock_guard<std::mutex> lock(mapIdLock_);
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-		auto it = sessionIdToMapId_.find(sessionId);
+		auto it = sessionIdToPlayer_.find(sessionId);
 
-		if (it == sessionIdToMapId_.end())
+		if (it == sessionIdToPlayer_.end())
 		{
 			return;
 		}
 
-		mapId = it->second;
+		player = it->second;
 	}
-
-
 
 	Message* message = messagePool_.Alloc();
 	//Message* message = new Message();
@@ -103,7 +100,7 @@ void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 
 	packet->AddRef();
 
-	messageQueue_[mapId].Enqueue(message);
+	messageQueue_[player->mapId_].Enqueue(message);
 }
 
 void ChatServer::LogicThread(ChatServer* server, int mapId)
@@ -165,8 +162,8 @@ void ChatServer::Monitoring()
 	printf("Session	   : %d\n", sessionCount_);
 	printf("Player	   : %d\n\n", playerCount_);
 
-	printf("Accept     : %d\n", acceptCountTotal_);
-	printf("Discon     : %d\n", disconnectCountTotal_);
+	printf("Accept     : %d\n", acceptCountTotal_.load());
+	printf("Discon     : %d\n", disconnectCountTotal_.load());
 	printf("DupLogin   : %d\n\n", dupLoginCountTotal_.load());
 
 	printf("Accept TPS : %d\n", acceptCount);

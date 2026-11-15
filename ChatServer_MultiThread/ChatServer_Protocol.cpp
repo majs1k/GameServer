@@ -20,9 +20,6 @@ void ChatServer::ProcessMessageQueue()
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
 
-		Player* player = message->player_;
-
-
 		switch (protocol)
 		{
 		case CS_NETWORK_PACKET:
@@ -74,7 +71,7 @@ void ChatServer::ProcessMessageQueue()
 
 
 
-			SS_ReqSectorMove(sessionId, playerId, sectorX, sectorY, player);
+			SS_ReqSectorMove(sessionId, playerId, sectorX, sectorY);
 		}
 		break;
 
@@ -99,22 +96,13 @@ void ChatServer::ProcessMessageQueue()
 
 		Player* player1;
 
-		auto it = tls_SessionIdToPlayer_.find(sessionId);
+		/// 수정 필요
+		auto it = sessionIdToPlayer_.find(sessionId);
 
-		if (it != tls_SessionIdToPlayer_.end())
+		if (it != sessionIdToPlayer_.end())
 		{
 			player1 = it->second;
 			player1->lastRecvTime_ = GetTickCount64();
-		}
-
-
-		/// TODO: 헤더 길이가 잘못 들어오는 상황을 어떻게 대처할지?
-		if (packet != nullptr)
-		{
-			if (packet->IsError())
-			{
-				__debugbreak();
-			}
 		}
 
 		if (packet != nullptr)
@@ -128,13 +116,6 @@ void ChatServer::ProcessMessageQueue()
 
 void ChatServer::CreatePlayer(uint64_t sessionId)
 {
-	{
-		std::lock_guard<std::mutex> lock(mapIdLock_);
-
-		/// mapId 추가
-		sessionIdToMapId_[sessionId] = INITIAL_MAP_ID;
-	}
-
 	Message* message = messagePool_.Alloc();
 	//Message* message = new Message();
 
@@ -145,22 +126,19 @@ void ChatServer::CreatePlayer(uint64_t sessionId)
 
 void ChatServer::RemovePlayer(uint64_t sessionId)
 {
-	int mapId;
+	Player* player;
 
 	{
-		std::lock_guard<std::mutex> lock(mapIdLock_);
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-		auto it = sessionIdToMapId_.find(sessionId);
+		auto it = sessionIdToPlayer_.find(sessionId);
 
-		if (it == sessionIdToMapId_.end())
+		if (it == sessionIdToPlayer_.end())
 		{
 			return;
 		}
 
-		mapId = it->second;
-
-		/// mapId 먼저 확인 후 삭제
-		sessionIdToMapId_.erase(sessionId);
+		player = it->second;
 	}
 
 	Message* message = messagePool_.Alloc();
@@ -168,7 +146,7 @@ void ChatServer::RemovePlayer(uint64_t sessionId)
 
 	message->Initialize(sessionId, nullptr, SS_REMOVE_PLAYER);
 
-	messageQueue_[mapId].Enqueue(message);
+	messageQueue_[player->mapId_].Enqueue(message);
 }
 
 void ChatServer::CheckTimeout()
@@ -192,27 +170,37 @@ void ChatServer::SS_CreatePlayer(uint64_t sessionId)
 
 	player->Initialize(sessionId);
 
-	tls_SessionIdToPlayer_.insert({ player->sessionId_ , player });
+	{
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
+
+		sessionIdToPlayer_.insert({ player->sessionId_ , player });
+	}
 }
 
 void ChatServer::SS_RemovePlayer(uint64_t sessionId)
 {
-	auto it = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (it == tls_SessionIdToPlayer_.end())
 	{
-		return;
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
+
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return;
+		}
+
+		player = it->second;
+
+		sessionIdToPlayer_.erase(sessionId);
 	}
 
-	Player* player = it->second;
-
-	tls_SessionIdToPlayer_.erase(sessionId);
+	tls_PlayerMap_.erase({ player->playerId_ });
 
 	if (player->isLogin_)
 	{
 		playerCount_--;
-
-		tls_PlayerMap_.erase({ player->playerId_ });
 
 		if (player->isInitSector_)
 		{

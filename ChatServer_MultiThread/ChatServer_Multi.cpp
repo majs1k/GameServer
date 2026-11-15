@@ -2,39 +2,32 @@
 #include "RpcModule.h"
 
 
-void ChatServer::SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY, Player* player)
+void ChatServer::SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
 {
-	/// mapId 먼저 확인 후 삭제
+	Player* player;
+
 	{
-		std::lock_guard<std::mutex> lock(mapIdLock_);
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-		auto it = sessionIdToMapId_.find(sessionId);
+		auto it = sessionIdToPlayer_.find(sessionId);
 
-		if (it == sessionIdToMapId_.end())
+		if (it == sessionIdToPlayer_.end())
 		{
-			Disconnect(sessionId);
-
 			return;
 		}
 
-		//sessionIdToMapId_.erase(sessionId);
+		player = it->second;
 
-		//sessionIdToMapId_[sessionId] = tls_MapId_;
-
-		it->second = tls_MapId_;
+		/// TODO: 이건 안전한 코드일까?
+		player->mapId_ = tls_MapId_;
 	}
 
-
-	/// TODO: 수정 - player 전달?
-	tls_SessionIdToPlayer_[sessionId] = player;
+	/// TODO: 안전하게 수정?
 	tls_PlayerMap_[sessionId] = player;
-
 
 
 	if (sectorX < 0 || sectorX >= 50 || sectorY < 0 || sectorY >= 50)
 		__debugbreak();
-
-
 
 	player->sectorX_ = sectorX;
 	player->sectorY_ = sectorY;
@@ -46,15 +39,20 @@ void ChatServer::SS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 
 void ChatServer::SS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat, std::vector<unsigned short>& sectorX, std::vector<unsigned short>& sectorY)
 {
-	auto iter = tls_SessionIdToPlayer_.find(sessionId);
+	Player* player;
 
-	if (iter == tls_SessionIdToPlayer_.end())
 	{
-		return;
+		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
+
+		auto it = sessionIdToPlayer_.find(sessionId);
+
+		if (it == sessionIdToPlayer_.end())
+		{
+			return;
+		}
+
+		player = it->second;
 	}
-
-	Player* player = iter->second;
-
 
 	if (!player->isLogin_)
 		return;

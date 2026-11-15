@@ -38,7 +38,23 @@ void NetServer::RecvPost(Session* session)
 		{
 			//printf("recv() Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAESHUTDOWN)
+		else if (error == WSAECONNRESET || error == WSAESHUTDOWN)
+		{
+			ReleaseSession(session);
+
+			return;
+		}
+		// 10038 내가 연결을 끊었을때 (closesocket)
+		// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
+		else if (error == WSAENOTSOCK)
+		{
+			__debugbreak();
+			ReleaseSession(session);
+
+			return;
+		}
+		// 정확한 원인은 모르나 내쪽에서 소켓 닫았을 확률 높은 것 같음
+		else if (error == WSAECONNABORTED)
 		{
 			ReleaseSession(session);
 
@@ -47,25 +63,21 @@ void NetServer::RecvPost(Session* session)
 		else
 		{
 			LOG(L"WSARecv() error: %d", error);
-
 			__debugbreak();
-
 			ReleaseSession(session);
 
 			return;
 		}
 	}
-	else
-	{
-		//printf("recv() Fast IO\n");
-	}
+	//else
+	//{
+	//	printf("recv() Fast IO\n");
+	//}
 }
 
 
 void NetServer::CompleteRecv(Session* session, int numOfBytes)
 {
-	//PRO(L"CompleteRecv");
-
 	session->recvQueue_.MoveRear(numOfBytes);
 
 	if (session->recvQueue_.IsFull())
@@ -91,7 +103,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 		if (header.code_ != NET_CODE)
 		{
-			LOG_INFO(L"recv code error");
+			//LOG_INFO(L"recv code error");
 
 			ReleaseSession(session);
 
@@ -102,7 +114,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 		if (bodySize < 0)
 		{
-			LOG_INFO(L"body size minus error");
+			//LOG_INFO(L"body size minus error");
 
 			ReleaseSession(session);
 
@@ -127,7 +139,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 		if (!packet->IsValidChecksum())
 		{
-			LOG_INFO(L"recv checksum error");
+			//LOG_INFO(L"recv checksum error");
 
 			ReleaseSession(session);
 
@@ -149,7 +161,6 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 	ReleaseSession(session);
 }
-
 
 
 //void NetServer::RecvPost(Session* session)
@@ -334,8 +345,6 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //}
 
 
-
-
 #define MAX_WSABUF 100
 
 void NetServer::SendPost(Session* session)
@@ -373,13 +382,6 @@ void NetServer::SendPost(Session* session)
 
 	InterlockedIncrement(&session->ioCount_);
 
-	//if (session->isDisconnected_)
-	//{
-	//	ReleaseSession(session);
-
-	//	return;
-	//}
-
 	// wsaBuf count가 0이면 10022 에러 발생함
 	int retval = WSASend(session->socket_, wsaBuf, count, nullptr, 0, (WSAOVERLAPPED*)&(session->sendOverlapped_), NULL);
 
@@ -389,27 +391,36 @@ void NetServer::SendPost(Session* session)
 
 		if (error == ERROR_IO_PENDING)
 		{
-			//printf("send Direct IO\n");
+			//printf("recv() Direct IO\n");
 		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED || error == WSAENOTSOCK || error == WSAESHUTDOWN)
+		else if (error == WSAECONNRESET || error == WSAESHUTDOWN || error == WSAECONNABORTED)
 		{
+			ReleaseSession(session);
+
+			return;
+		}
+		// 10038 내가 연결을 끊었을때 (closesocket)
+		// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
+		else if (error == WSAENOTSOCK)
+		{
+			__debugbreak();
 			ReleaseSession(session);
 
 			return;
 		}
 		else
 		{
-			LOG(L"WSASend() error: %d", error);
+			LOG(L"WSARecv() error: %d", error);
 			__debugbreak();
-
 			ReleaseSession(session);
+
 			return;
 		}
 	}
-	else
-	{
-		//printf("send Fast IO\n");
-	}
+	//else
+	//{
+	//	printf("send Fast IO\n");
+	//}
 }
 
 void NetServer::CompleteSend(Session* session, int numOfBytes)
@@ -443,21 +454,22 @@ void NetServer::ReleaseSession(Session* session)
 {
 	if (InterlockedDecrement(&session->ioCount_) == 0)
 	{
-		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_FLAG, 0) != 0)
+		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_MASK, 0) != 0)
 			return;
 
 		OnRelease(session->sessionId_);
 
 		InterlockedDecrement(&sessionCount_);
 
-
-		/// 기본용
+		/// accept 스레드 사용 시
 		closesocket(session->socket_);
-		int index = GetSessionIndex(session->sessionId_);
-		sessionIndexPool_.Push(index);
 
 		/// 추가
 		session->Clear();
+
+
+		int index = GetSessionIndex(session->sessionId_);
+		sessionIndexPool_.Push(index);
 
 
 		/// 소켓 연결 종료 (세션 사용 끝)
@@ -485,19 +497,19 @@ void NetServer::ReleaseSession(Session* session)
 
 uint64_t NetServer::AllocSessionId(Session* session)
 {
-	uint64_t index = session->sessionId_ >> 48;
+	uint64_t index = session->sessionId_ >> SESSION_INDEX_SHIFT;
 
 	uint64_t id = ++idSeed_;
 
-	return id | (index << 48);
+	return id | (index << SESSION_INDEX_SHIFT);
 }
 
 uint64_t NetServer::GetSessionId(uint64_t sessionId)
 {
-	return sessionId & 0x0000ffffffffffff;
+	return sessionId & SESSION_ID_MASK;
 }
 
 int NetServer::GetSessionIndex(uint64_t sessionId)
 {
-	return static_cast<int>((sessionId >> 48) & 0xffff);
+	return static_cast<int>((sessionId & SESSION_INDEX_MASK) >> SESSION_INDEX_SHIFT);
 }

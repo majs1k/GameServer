@@ -11,50 +11,6 @@ class RpcGenerator
     // RpcProxy
     public static void GenerateRpcProxy(string readFile)
     {
-        //using (var reader = new StreamReader(readFile))
-        //{
-        //    string proxyHeaderFunc = "";
-        //    string proxyCppFunc = "";
-        //    string line;
-
-        //    while ((line = reader.ReadLine()) != null)
-        //    {
-        //        if (string.IsNullOrWhiteSpace(line))
-        //            continue;
-
-        //        var parsed = Parser.ParseLine(line);
-        //        string funcParam = "";
-        //        string shiftParam = "";
-
-        //        foreach (var p in parsed.Parameters)
-        //        {
-        //            funcParam += ", ";
-        //            funcParam += string.Format(RpcServerFormat.funcParam, p.type, p.name);
-        //            shiftParam += string.Format(RpcServerFormat.shiftLeft, p.name);
-        //        }
-
-        //        proxyHeaderFunc += string.Format(RpcServerFormat.proxyHeaderFunc, parsed.Name, funcParam);
-
-        //        proxyCppFunc += string.Format(
-        //            RpcServerFormat.proxyCppFunc,
-        //            parsed.Name,
-        //            funcParam,
-        //            parsed.PacketType,
-        //            shiftParam);
-        //    }
-
-        //    string proxyHeader = string.Format(RpcServerFormat.proxyHeader, proxyHeaderFunc);
-
-        //    File.WriteAllText("RpcProxy.h", proxyHeader);
-
-        //    string proxyCpp =
-        //        RpcServerFormat.proxyCppHeader +
-        //        Environment.NewLine +
-        //        proxyCppFunc;
-
-        //    File.WriteAllText("RpcProxy.cpp", proxyCpp);
-        //}
-
         using (var reader = new StreamReader(readFile))
         {
             string proxyHeaderFunc = "";
@@ -140,6 +96,7 @@ class RpcGenerator
         {
             string stubHeaderFunc = "";
             string stubPacketProc = "";
+            string stubHeaderMessageCount = "";
             string stubCppFunc = "";
             string line;
 
@@ -153,6 +110,10 @@ class RpcGenerator
                 string funcParam1 = "";
                 string funcParam2 = "";
                 string shiftParam = "";
+
+                stubHeaderMessageCount += string.Format(
+                  RpcFormat.stubHeaderMessageCount,
+                     parsed.Name);
 
                 foreach (var p in parsed.Parameters)
                 {
@@ -183,6 +144,7 @@ class RpcGenerator
                     funcParam2,
                     shiftParam,
                     parsed.Name,
+                    parsed.Name,
                     funcParam1);
 
                 stubCppFunc += string.Format(
@@ -191,7 +153,7 @@ class RpcGenerator
                     funcParam);
             }
 
-            string stubHeader = string.Format(RpcFormat.stubHeader, stubHeaderFunc);
+            string stubHeader = string.Format(RpcFormat.stubHeader, stubHeaderFunc + Environment.NewLine + stubHeaderMessageCount);
 
             File.WriteAllText("RpcStub.h", stubHeader);
 
