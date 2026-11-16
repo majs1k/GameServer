@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\NetworkLibrary\NetworkLibrary</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
