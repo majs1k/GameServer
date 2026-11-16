@@ -1,7 +1,4 @@
 #pragma once
-//#include <Windows.h>
-
-
 // ºΩ≈Õ 50 x 50
 
 enum en_PACKET_TYPE
@@ -219,14 +216,14 @@ struct SessionKey
 struct Chat
 {
 	short len_;
-	wchar_t chat_[100] = {};
+	wchar_t chat_[100];
 
 	Chat() = default;
 
 	Chat(const wchar_t* chat)
 	{
 		wcscpy_s(chat_, 100, chat);
-		len_ = wcslen(chat_) * sizeof(wchar_t);
+		len_ = static_cast<short>(wcslen(chat_) * sizeof(wchar_t));
 	}
 };
 

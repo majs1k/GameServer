@@ -23,17 +23,15 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		return true;
 	}
 
-
 	auto it2 = playerMap_.find(playerId);
 
 	// 중복 접속 시 기존 접속만 종료
-	// 더미를 로컬에서 테스트시 발생 불가 (RST 유실이 원인인데 로컬에선 불가)
+	// 어택 x 더미를 로컬에서 같이 테스트시 발생 불가 (RST 유실 발생 안함)
 	if (it2 != playerMap_.end())
 	{
-		/// TODO: 수정완료. 확인후 삭제
-		Player* alreadyLoginedPlayer = playerMap_[playerId];
-		//Player* alreadyLoginedPlayer = it2->second;
+		Player* alreadyLoginedPlayer = it2->second;
 
+		/// TODO: 없애기??
 		alreadyLoginedPlayer->isLogin_ = false;
 		playerCount_--;
 
@@ -45,13 +43,15 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 			sector_[alreadyLoginedPlayer->sectorY_][alreadyLoginedPlayer->sectorX_].remove(alreadyLoginedPlayer);
 		}
 
-		++dupLoginCountTotal_;
+		dupLoginCountTotal_++;
 
 		// Disconnect 이후론 로직 없어야함
 		Disconnect(alreadyLoginedPlayer->sessionId_);
+
+		LOG("CHATSERVER", ELOG::SYSTEM_LEVEL, "duplicate login / id: %d", playerId);
 	}
 
-	// TODO: 세션 키 인증
+	// + 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
 	playerMap_.insert({ playerId, player });
@@ -80,14 +80,14 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		//LOG(L"reqmessage playerid error");
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
 
 		return false;
 	}
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		LOG(L"not valid sector");
+		LOG("ChatServer", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d",player->playerId_, sectorX, sectorY);
 
 		return false;
 	}
@@ -134,7 +134,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	if (!player->isInitSector_)
 	{
-		LOG(L"not init sector");
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id: %d", player->playerId_);
 
 		return false;
 	}
@@ -142,51 +142,16 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		//LOG(L"reqmessage playerid error");
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id: %d", playerId);
 
 		return false;
 	}
 
-	/// 로그를 찍는 순간 해당 문제가 안나옴....
-	//wchar_t str[100];
-	//wcscpy_s(str, 100, chat.chat_);
-	//str[chat.len_ / sizeof(wchar_t)] = L'\0';
-	//LOG(L"%d : %s", playerId, str);
-
-
-
-
-	//unsigned int now = GetTickCount();
-
-	//// 1초 내에 다시 채팅 보냈을시
-	//if (now - player->lastChatTime_ < 1000)
-	//{
-	//	player->curChatCount_++;
-	//}
-
-	//// 채팅 도배 시 확인시점으로부터 5초간 금지
-	//if (now - player->lastChatTime_ >= 5000)
-	//{
-	//	player->curChatCount_ = 0;
-	//}
-
-	//// 채팅 도배 금지
-	//if (player->curChatCount_ > 5)
-	//{
-	//	std::string m = u8"잠시 후 다시 채팅해주세요.";
-	//	g_RpcProxy.ResChat(sessionId, player->playerId_, m);
-
-	//	return true;
-	//}
-
-	//player->lastChatTime_ = now;
-
 	std::vector<uint64_t> sessionIds;
 
-	/// TODO: 원상복구
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 3; i++)
 	{
-		for (int j = 0; j < 1; j++)
+		for (int j = 0; j < 3; j++)
 		{
 			unsigned short sectorNX = player->sectorX_ + dx[i];
 			unsigned short sectorNY = player->sectorY_ + dy[j];
@@ -196,9 +161,9 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 			for (auto& target : sector_[sectorNY][sectorNX])
 			{
-				//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
 				if (target->isLogin_)
 				{
+					//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
 					sessionIds.push_back(target->sessionId_);
 				}
 			}

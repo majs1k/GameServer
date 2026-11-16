@@ -21,7 +21,6 @@ using uint = uint32_t;
 #pragma pack(push, 1)
 // ------------------------------------------------------- //
 
-
 inline constexpr static unsigned char NET_CODE = 0x77;
 inline constexpr static unsigned char NET_KEY = 0x32;
 
@@ -64,7 +63,7 @@ struct MY_HEADER
 
 #pragma pack(pop)
 
-// TODO: 용량 수정
+/// TODO: 수정
 #define PACKET_CAPACITY				1000
 #define HEADER_CAPACITY				5
 
@@ -77,18 +76,13 @@ class Packet
 private:
 
 	char* buffer_ = nullptr;
-
 	int	capacity_ = PACKET_CAPACITY;
-
 	int writePos_ = 0;
 	int readPos_ = 0;
-
 	int headerSize_ = 0;
-
 	bool isError_ = false;
 	bool isEncoding_ = false;
 	std::atomic<int> refCount_ = 0;
-
 
 public:
 
@@ -102,7 +96,7 @@ public:
 		delete[] buffer_;
 	}
 
-	void Initialize(int headerSize)
+	void Initialize(int headerSize = 0)
 	{
 		writePos_ = HEADER_CAPACITY;
 		readPos_ = HEADER_CAPACITY;
@@ -145,6 +139,11 @@ public:
 	char* GetBodyPtr() const
 	{
 		return buffer_ + HEADER_CAPACITY;
+	}
+
+	char* GetBufferPtr() const
+	{
+		return buffer_;
 	}
 
 	char* GetFrontBufferPtr() const

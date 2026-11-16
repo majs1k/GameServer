@@ -21,7 +21,7 @@
     <ClInclude Include="CommonProtocol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ChatServer.h">
+    <ClInclude Include="ChatServer_Multi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -42,9 +42,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ChatServer_Protocol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ChatServer_Multi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

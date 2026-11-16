@@ -21,46 +21,40 @@ void ChatServer::ProcessMessageQueue()
 		{
 		case CS_NETWORK_PACKET:
 		{
+			messageCount_CS_NETWORK_PACKET_++;
+
 			/// 네트워크 패킷 처리 (타입 자료형 주의)
 			if (!PacketProc(sessionId, packet))
 			{
 				Disconnect(sessionId);
-
-				//LOG(L"packetproc error");
 			}
-
-			messageCount_CS_NETWORK_PACKET_++;
 
 			break;
 		}
 
 		case SS_CREATE_PLAYER:
 
-			SS_CreatePlayer(sessionId);
-
 			messageCount_SS_CreatePlayer_++;
+			SS_CreatePlayer(sessionId);
 
 			break;
 
 		case SS_REMOVE_PLAYER:
 
-			SS_RemovePlayer(sessionId);
-
 			messageCount_SS_RemovePlayer_++;
+			SS_RemovePlayer(sessionId);
 
 			break;
 
 		case SS_CHECK_TIMEOUT:
 
-			SS_CheckTimeout(sessionId);
+			SS_CheckTimeout();
 
 			break;
-
 
 		default:
 
 			__debugbreak();
-
 		}
 
 		auto it = sessionIdToPlayer_.find(sessionId);
@@ -146,13 +140,13 @@ void ChatServer::SS_RemovePlayer(uint64_t sessionId)
 		}
 	}
 
-	// TODO: 다른 플레이어들에게 퇴장 알림
+	// + 다른 플레이어들에게 퇴장 알림
 
 	playerPool_.Free(player);
 	//delete player;
 }
 
-void ChatServer::SS_CheckTimeout(uint64_t sessionId)
+void ChatServer::SS_CheckTimeout()
 {
 	// 타임아웃 플레이어 세션 종료
 	for (auto& pm : playerMap_)
@@ -163,9 +157,8 @@ void ChatServer::SS_CheckTimeout(uint64_t sessionId)
 
 		if (timeDiff > TIMEOUT_MS)
 		{
-			Disconnect(p->sessionId_);
-
 			timeoutCountTotal_++;
+			Disconnect(p->sessionId_);
 		}
 	}
 }

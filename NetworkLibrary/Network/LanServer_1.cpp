@@ -353,7 +353,6 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 
 	if (session->sendQueue_.Size() > 2000)
 	{
-		/// TODO: 어케 수정?
 		Disconnect(sessionId);
 
 		return false;

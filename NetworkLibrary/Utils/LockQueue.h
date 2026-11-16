@@ -42,7 +42,7 @@ public:
 		return true;
 	}
 
-	int Size()
+	int Size() const
 	{
 		return queue_.size();
 	}
@@ -89,7 +89,7 @@ public:
 		return true;
 	}
 
-	int Size()
+	int Size() const
 	{
 		return stack_.size();
 	}

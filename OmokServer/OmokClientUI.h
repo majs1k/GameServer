@@ -644,7 +644,6 @@ private:
 		// 턴 타이머
 		// =========================================================
 
-		// TODO: 클라측에선 결과 판단 제거
 		client_->omokGame_.UpdateTurnTimer(ImGui::GetIO().DeltaTime);
 
 

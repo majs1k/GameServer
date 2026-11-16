@@ -128,7 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ChatServer.h" />
+    <ClInclude Include="ChatServer_Multi.h" />
     <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="RpcModule.h" />
   </ItemGroup>
@@ -138,7 +138,6 @@
   <ItemGroup>
     <ClCompile Include="ChatServer.cpp" />
     <ClCompile Include="ChatServerMain.cpp" />
-    <ClCompile Include="ChatServer_Multi.cpp" />
     <ClCompile Include="ChatServer_Protocol.cpp" />
     <ClCompile Include="ChatServer_Rpc.cpp" />
     <ClCompile Include="RpcModule.cpp" />

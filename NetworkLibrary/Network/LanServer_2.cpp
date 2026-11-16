@@ -133,9 +133,8 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 		// 메세지 사이즈만큼만 무브
 		packet->MoveWritePos(bodySize);
 
-
 		recvMessageCount_++;
-
+		// tcp 스트림을 메세지 단위로 컨텐츠로 보냄
 		OnRecv(session->sessionId_, packet);
 
 		packet->Free();

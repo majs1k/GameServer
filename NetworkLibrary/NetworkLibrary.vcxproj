@@ -130,7 +130,6 @@
   <ItemGroup>
     <ClInclude Include="Database\Database.h" />
     <ClInclude Include="Network\LanClient.h" />
-    <ClInclude Include="Network\LanServer.h" />
     <ClInclude Include="Network\NetServer.h" />
     <ClInclude Include="Utils\ConfigLoader.h" />
     <ClInclude Include="Utils\CrashDump.h" />
@@ -190,8 +189,6 @@
   <ItemGroup>
     <ClCompile Include="Database\Database.cpp" />
     <ClCompile Include="Network\LanClient.cpp" />
-    <ClCompile Include="Network\LanServer_1.cpp" />
-    <ClCompile Include="Network\LanServer_2.cpp" />
     <ClCompile Include="Network\NetServer_2.cpp" />
     <ClCompile Include="Network\NetServer_1.cpp" />
   </ItemGroup>

@@ -1,118 +1,206 @@
-//-------------------------------------------------------------------------
-// 
-// 로그
-// 
-// 유니코드 사용해야함 주의
-// Log에서 문자열 출력시 무조건 %s로 사용할것 (유니코드라도)
-// 
-// 예외조건 항상 꼼꼼히 체크할것 why? 멀티스레드에서는 어떤 오류가 발생할지 모름
-// 서버 다운되도 데이터 오염은 never -> 로그 & 메모리덤프로 디버깅
-// 
-// wofstream 파일 출력해도 파일 인코딩은 utf-8
-// 
-//-------------------------------------------------------------------------
 #pragma once
 #include <fstream>
 #include <mutex>
+#include <cstdarg>
+#include <cstdio>
+#include <strsafe.h>
+#include <string>
+#include <unordered_map>
+
 #include "Singleton.h"
 #include <Windows.h>
 
-enum class LogLevel
+enum class ELOG
 {
-	DEFAULT,
-	INFO,
-	ERR,
+	DEBUG_LEVEL,
+	ERROR_LEVEL,
+	SYSTEM_LEVEL,
 };
 
-#define LOG(fmt, ...)		        Logger::Instance().Log(LogLevel::DEFAULT, fmt, ##__VA_ARGS__)
-#define LOG_INFO(fmt, ...)          Logger::Instance().Log(LogLevel::INFO, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fmt, ...)         Logger::Instance().Log(LogLevel::ERR, fmt, ##__VA_ARGS__)
+enum class ELOG_MODE
+{
+	NONE_MODE,
+	DEBUG_MODE,
+	ERROR_MODE,
+};
+
+#define LOG(fileName, level, ...)             Logger::Instance().Log(fileName, level, __VA_ARGS__)
+#define LOG_INIT(directory, mode)               Logger::Instance().Initialize(directory, mode)
+
 
 class Logger : public Singleton<Logger>
 {
 private:
-	std::wofstream fout_;
-	WCHAR fileName_[MAX_PATH];
+
+	std::unordered_map<std::string, std::ofstream> logFiles_;
+
+	char directory_[MAX_PATH] = {};
 
 	std::mutex lock_;
+	ELOG_MODE mode_ = ELOG_MODE::DEBUG_MODE;
 
-public:
-	Logger()
+private:
+
+	bool OpenLogFile(const char* fileDirectory)
 	{
+		if (!CreateDirectoryA(directory_, nullptr))
+		{
+			if (GetLastError() != ERROR_ALREADY_EXISTS)
+				return false;
+		}
+
+		char fileName[MAX_PATH] = {};
+
 		SYSTEMTIME st;
 		GetLocalTime(&st);
 
-		swprintf_s(fileName_, L"./Log/log_%04d%02d%02d_%02d%02d%02d.txt", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+		HRESULT hr = StringCchPrintfA(fileName, MAX_PATH, "%s\\log_%04d_%02d_%s.txt",
+			directory_, st.wYear, st.wMonth, fileDirectory);
 
-		fout_.open(fileName_);
+		if (FAILED(hr))
+			return false;
 
-		if (!fout_.is_open())
+		auto& fout = logFiles_[fileDirectory];
+
+		fout.open(fileName, std::ios::out | std::ios::app);
+
+		return fout.is_open();
+	}
+
+	const char* GetLevelString(ELOG level)
+	{
+		switch (level)
 		{
-			printf("*** Logger fail ***\n");
+		case ELOG::DEBUG_LEVEL:
+			return "DEBUG";
 
-			__debugbreak();
+		case ELOG::ERROR_LEVEL:
+			return "ERROR";
+
+		case ELOG::SYSTEM_LEVEL:
+			return "SYSTEM";
+
+		default:
+			return "UNKNOWN";
 		}
 	}
+
+public:
+
+	Logger() = default;
 
 	~Logger()
 	{
-		fout_.close();
+		std::lock_guard<std::mutex> lock(lock_);
+
+		for (auto& [serverName, fout] : logFiles_)
+		{
+			if (fout.is_open())
+			{
+				fout.flush();
+				fout.close();
+			}
+		}
 	}
 
-	void Log(LogLevel level, const WCHAR* fmt, ...)
+	void Initialize(const char* directory, ELOG_MODE mode)
 	{
+		if (directory == nullptr)
+			return;
+
+		std::lock_guard<std::mutex> lock(lock_);
+
+		if (logFiles_.size() > 0)
+		{
+			__debugbreak();
+			return;
+		}
+
+		HRESULT hr = StringCchCopyA(directory_, MAX_PATH, directory);
+
+		if (FAILED(hr))
+		{
+			__debugbreak();
+			return;
+		}
+
+		mode_ = mode;
+
+		if (!CreateDirectoryA(directory_, nullptr))
+		{
+			if (GetLastError() != ERROR_ALREADY_EXISTS)
+			{
+				__debugbreak();
+				return;
+			}
+		}
+	}
+
+	void SetMode(ELOG_MODE mode)
+	{
+		std::lock_guard<std::mutex> lock(lock_);
+		mode_ = mode;
+	}
+
+	void Log(const char* fileName, ELOG level, const char* fmt, ...)
+	{
+		if (fileName == nullptr || fmt == nullptr)
+			return;
+
+		if (mode_ == ELOG_MODE::NONE_MODE)
+			return;
+
+		if (mode_ == ELOG_MODE::ERROR_MODE && level == ELOG::DEBUG_LEVEL)
+			return;
+
+		char userMessage[1024] = {};
+
 		va_list args;
 		va_start(args, fmt);
 
-		WCHAR userMessage[1024];
-		vswprintf_s(userMessage, fmt, args);
+		HRESULT hr = StringCchVPrintfA(userMessage, _countof(userMessage), fmt, args);
 
 		va_end(args);
+
+		if (FAILED(hr))
+		{
+			StringCchCopyA(userMessage, _countof(userMessage), "Log message formatting failed.");
+		}
 
 		SYSTEMTIME st;
 		GetLocalTime(&st);
 
-		DWORD threadId = GetCurrentThreadId();
+		char finalMessage[1400] = {};
 
-		const WCHAR* levelStr;
+		hr = StringCchPrintfA(finalMessage, _countof(finalMessage), "[%s] [%04d-%02d-%02d %02d:%02d:%02d / %s] %s\n", fileName,
+			st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, GetLevelString(level), userMessage);
 
-		switch (level)
+		if (FAILED(hr))
+			return;
+
+		std::lock_guard<std::mutex> lock(lock_);
+
+		auto iter = logFiles_.find(fileName);
+
+		if (iter == logFiles_.end())
 		{
-		case LogLevel::INFO:
-			levelStr = L"INFO";
-			break;
+			if (!OpenLogFile(fileName))
+			{
+				__debugbreak();
+				return;
+			}
 
-		case LogLevel::ERR:
-			levelStr = L"ERROR";
-			break;
-
-		default:
-			levelStr = L"DEFAULT";
-			break;
+			iter = logFiles_.find(fileName);
 		}
 
-		WCHAR finalMessage[1400];
+		auto& fout = iter->second;
 
-		swprintf_s(finalMessage, L"[%04d-%02d-%02d %02d:%02d:%02d.%03d] [T%u] [%s] %s\n",
-			st.wYear, st.wMonth, st.wDay,
-			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
-			threadId, levelStr, userMessage);
+		fout << finalMessage;
+		fout.flush();
 
+		if (!fout)
 		{
-			std::lock_guard<std::mutex> lock(lock_);
-
-			//std::wcout << finalMessage;
-			fout_ << finalMessage;
-			fout_.flush();
-
-			if (fout_.bad())
-			{
-				__debugbreak();
-			}
-			else if (fout_.fail())
-			{
-				__debugbreak();
-			}
+			__debugbreak();
 		}
 	}
 };

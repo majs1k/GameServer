@@ -8,9 +8,7 @@ void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname
 {
 	playerId_ = playerId;
 	loginId_ = loginId;
-
 	nickname_ = nickname;
-
 	isLogin_ = true;
 	//isInitSector_ = false;
 
@@ -21,7 +19,6 @@ void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname
 void ChatServer::Player::Initialize(uint64_t sessionId)
 {
 	sessionId_ = sessionId;
-
 	isLogin_ = false;
 	isInitSector_ = false;
 }
@@ -46,15 +43,6 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (sessionCount_ >= sessionMax_)
-	{
-		LOG(L"[Network] session limit over");
-
-		return false;
-	}
-
-	// TODO: 외부 ip당 접속자 제한 등..
-
 	return true;
 }
 

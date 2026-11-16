@@ -1,10 +1,10 @@
-#include "ChatServer.h"
+#include "ChatServer_Multi.h"
 #include "RpcModule.h"
 #include "Utils/Logger.h"
 #include "Utils/Profiler.h"
 
 
-void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname)
+void ChatServer_Multi::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname)
 {
 	playerId_ = playerId;
 	loginId_ = loginId;
@@ -18,7 +18,7 @@ void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname
 	//curChatCount_ = 0;
 }
 
-void ChatServer::Player::Initialize(uint64_t sessionId)
+void ChatServer_Multi::Player::Initialize(uint64_t sessionId)
 {
 	sessionId_ = sessionId;
 
@@ -27,7 +27,7 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 }
 
 
-ChatServer::ChatServer()
+ChatServer_Multi::ChatServer_Multi()
 {
 	g_RpcProxy.serverProxy_ = this;
 	serverStub_ = this;
@@ -41,7 +41,7 @@ ChatServer::ChatServer()
 	monitorThread_ = std::thread(MonitorThread, this);
 }
 
-ChatServer::~ChatServer()
+ChatServer_Multi::~ChatServer_Multi()
 {
 	for (int i = 0; i < MAP_COUNT; i++)
 	{
@@ -52,31 +52,22 @@ ChatServer::~ChatServer()
 	monitorThread_.join();
 }
 
-bool ChatServer::OnConnectionRequest(const std::string& ip, int port)
+bool ChatServer_Multi::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (sessionCount_ >= sessionMax_)
-	{
-		LOG(L"[Network] session limit over");
-
-		return false;
-	}
-
-	// TODO: 외부 ip당 접속자 제한 등..
-
 	return true;
 }
 
-void ChatServer::OnAccept(uint64_t sessionId)
+void ChatServer_Multi::OnAccept(uint64_t sessionId)
 {
 	CreatePlayer(sessionId);
 }
 
-void ChatServer::OnRelease(uint64_t sessionId)
+void ChatServer_Multi::OnRelease(uint64_t sessionId)
 {
 	RemovePlayer(sessionId);
 }
 
-void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
+void ChatServer_Multi::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	Player* player;
 
@@ -103,7 +94,7 @@ void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 	messageQueue_[player->mapId_].Enqueue(message);
 }
 
-void ChatServer::LogicThread(ChatServer* server, int mapId)
+void ChatServer_Multi::LogicThread(ChatServer_Multi* server, int mapId)
 {
 	tls_MapId_ = mapId;
 
@@ -113,7 +104,7 @@ void ChatServer::LogicThread(ChatServer* server, int mapId)
 	}
 }
 
-void ChatServer::SchedulerThread(ChatServer* server)
+void ChatServer_Multi::SchedulerThread(ChatServer_Multi* server)
 {
 	int64_t cnt = 0;
 
@@ -128,7 +119,7 @@ void ChatServer::SchedulerThread(ChatServer* server)
 	}
 }
 
-void ChatServer::MonitorThread(ChatServer* server)
+void ChatServer_Multi::MonitorThread(ChatServer_Multi* server)
 {
 	while (!server->shutdown_)
 	{
@@ -139,7 +130,7 @@ void ChatServer::MonitorThread(ChatServer* server)
 }
 
 
-void ChatServer::Monitoring()
+void ChatServer_Multi::Monitoring()
 {
 	int acceptCount = acceptCount_.exchange(0);
 
@@ -185,4 +176,29 @@ void ChatServer::Monitoring()
 	printf("Packet  Pool : %d\n", packetPool_.Capacity());
 	printf("Message Pool : %d\n", messagePool_.Capacity());
 	printf("Player  Pool : %d\n\n", playerPool_.Capacity());
+}
+
+
+int ChatServer_Multi::SectorToMapId(unsigned short x, unsigned short y)
+{
+	if (0 <= x && x < 25 && 0 <= y && y < 25)
+		return  0;
+	else if (25 <= x && x < 50 && 0 <= y && y < 25)
+		return 1;
+	else if (0 <= x && x < 25 && 25 <= y && y < 50)
+		return 2;
+	else if (25 <= x && x < 50 && 25 <= y && y < 50)
+		return 3;
+	else
+		return -1;
+}
+
+int ChatServer_Multi::SectorToMapX(unsigned short x)
+{
+	return x % MAP_WIDTH;
+}
+
+int ChatServer_Multi::SectorToMapY(unsigned short y)
+{
+	return y % MAP_HEIGHT;
 }

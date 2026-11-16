@@ -27,11 +27,6 @@ private:
 		}
 	};
 
-
-	std::thread logicThread_;
-	LockFreeQueue<Message*> messageQueue_;
-	//LockQueue<Message*> messageQueue_;
-
 public:
 
 	TestServer();
@@ -45,16 +40,14 @@ private:
 	void OnRecv(uint64_t sessionId, Packet* packet) override;
 
 	static void LogicThread(TestServer* server);
-
 	void ProcessMessageQueue();
 	bool PacketProc(uint64_t sessionId, Packet* packet);
 
+	std::thread logicThread_;
+	LockFreeQueue<Message*> messageQueue_;
+	MemoryPoolTls<Message> messagePool_;
 
 	std::thread monitorThread_;
 	static void monitorThread(TestServer* server);
-
-
 	void Monitoring();
-
-	MemoryPoolTls<Message> messagePool_;
 };

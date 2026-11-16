@@ -11,7 +11,6 @@ int main()
 	CrashDump().Initialize();
 
 	Profiler::Start();
-
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 
 	TestServer server;

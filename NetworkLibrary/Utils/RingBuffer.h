@@ -13,19 +13,14 @@
 #pragma once
 #include <iostream>
 
-#define SAFETY_PERCENT		80
-
 class RingBuffer
 {
 private:
 
 	char* buffer_;
 	int capacity_;
-
 	int writePos_;
 	int readPos_;
-
-	int safeSize_;
 
 public:
 
@@ -33,8 +28,6 @@ public:
 		:capacity_(bufferSize), writePos_(0), readPos_(0)
 	{
 		buffer_ = new char[capacity_];
-
-		safeSize_ = capacity_ * SAFETY_PERCENT / 100;
 	}
 
 	~RingBuffer()
@@ -74,7 +67,6 @@ public:
 
 		buffer_ = newBuffer;
 		capacity_ = size;
-		safeSize_ = capacity_ * SAFETY_PERCENT / 100;
 	}
 
 	int UseSize() const
@@ -86,19 +78,12 @@ public:
 		int r = readPos_;
 		int w = writePos_;
 
-		return r <= w
-			? w - r
-			: w + capacity_ - r;
+		return r <= w ? w - r : w + capacity_ - r;
 	}
 
 	int FreeSize() const
 	{
 		return capacity_ - UseSize() - 1;
-	}
-
-	int SafeSize() const
-	{
-		return safeSize_;
 	}
 
 	bool IsFull() const
@@ -219,45 +204,5 @@ public:
 
 		writePos_ = (writePos_ + size) % capacity_;
 		return size;
-	}
-};
-
-#include <queue>
-
-template <typename T>
-class TRingBuffer
-{
-private:
-
-	std::queue<T> queue_;
-
-public:
-
-	void Clear()
-	{
-		queue_ = std::queue<T>();
-	}
-
-	// 큐의 크기를 반환
-	size_t UseSize() const
-	{
-		return queue_.size();
-	}
-
-	void Enqueue(T& value)
-	{
-		queue_.push(value);
-	}
-
-	bool Dequeue(T& value)
-	{
-		if (queue_.empty())
-			return false;
-
-		value = queue_.front();
-
-		queue_.pop();
-
-		return true;
 	}
 };

@@ -19,31 +19,30 @@ NetServer::Session::Session()
 	sendOverlapped_.type_ = IO_TYPE::SEND;
 	recvOverlapped_.type_ = IO_TYPE::RECV;
 
-	//recvPacket_ = packetPool_.Alloc();
+	recvPacket_ = packetPool_.Alloc();
 }
 
 NetServer::Session::~Session()
 {
-	//packetPool_.Free(recvPacket_);
+	packetPool_.Free(recvPacket_);
 }
-
 
 void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int port)
 {
 	//socket_ = socket;
 	sessionId_ = sessionId;
-
 	ip_ = ip;
 	port_ = port;
-
-	// 초기화시 참조 카운트를 1로 시작
 	ioCount_ = 1;
 	sendPending_ = false;
+
+	//recvQueue_.Clear();
+	recvPacket_->Clear(sizeof(NET_HEADER));
 }
 
 void NetServer::Session::Clear()
 {
-	//sendQueue_.Clear();
+	//sendQueue_.clear();
 	while (1)
 	{
 		Packet* packet;
@@ -57,24 +56,17 @@ void NetServer::Session::Clear()
 		packet->Free();
 	}
 
-	//sendPostQueue_.Clear();
 	while (1)
 	{
-		Packet* packet;
-
-		bool ret = sendPostQueue_.Dequeue(packet);
-
-		if (ret == false)
+		if (sendPostQueue_.empty())
 			break;
+
+		Packet* packet = sendPostQueue_.front();
+		sendPostQueue_.pop();
 
 		//delete p;
 		packet->Free();
 	}
-
-	recvQueue_.Clear();
-	
-
-	//recvPacket_->Clear(sizeof(LAN_HEADER));
 }
 
 NetServer::NetServer()
@@ -82,7 +74,10 @@ NetServer::NetServer()
 	WSADATA wsa;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+	{
+		/// TODO: 수정
 		wprintf(L"WSAStartup() error");
+	}
 }
 
 NetServer::~NetServer()
@@ -101,7 +96,10 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 
 	listenSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenSocket_ == INVALID_SOCKET)
+	{
+		/// TODO: 수정
 		wprintf(L"socket() error");
+	}
 
 	/// 링거 - closesocekt() 호출시 즉시 리턴, 연결 강제 종료
 	// 서버 클라 둘다 설정할 것
@@ -153,7 +151,6 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 		hSendThread_.push_back(hThread);
 	}
 
-
 	SOCKADDR_IN serverAddr;
 	ZeroMemory(&serverAddr, sizeof(serverAddr));
 	serverAddr.sin_family = AF_INET;
@@ -163,7 +160,7 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	if (bind(listenSocket_, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 		wprintf(L"bind() error");
 
-	/// 백로그큐 만개
+	/// 백로그큐
 	if (listen(listenSocket_, SOMAXCONN_HINT(10000)) == SOCKET_ERROR)
 		wprintf(L"listen() error");
 
@@ -172,10 +169,8 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	GUID GuidAcceptEx = WSAID_ACCEPTEX;
 	DWORD dwBytes;
 
-	int ret = WSAIoctl(listenSocket_, SIO_GET_EXTENSION_FUNCTION_POINTER,
-		&GuidAcceptEx, sizeof(GuidAcceptEx),
-		&lpfnAcceptEx_, sizeof(lpfnAcceptEx_),
-		&dwBytes, NULL, NULL);
+	int ret = WSAIoctl(listenSocket_, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidAcceptEx, sizeof(GuidAcceptEx),
+		&lpfnAcceptEx_, sizeof(lpfnAcceptEx_), &dwBytes, NULL, NULL);
 
 	if (ret == SOCKET_ERROR)
 	{
@@ -183,22 +178,17 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 		__debugbreak();
 	}
 
-
-	//LPFN_ACCEPTEX lpfnAcceptEx_ = NULL;
 	GUID GuidDisconnectEx = WSAID_DISCONNECTEX;
 	DWORD dwBytes1;
 
-	int ret1 = WSAIoctl(listenSocket_, SIO_GET_EXTENSION_FUNCTION_POINTER,
-		&GuidDisconnectEx, sizeof(GuidDisconnectEx),
-		&lpfnDisconnectex_, sizeof(lpfnDisconnectex_),
-		&dwBytes1, NULL, NULL);
+	int ret1 = WSAIoctl(listenSocket_, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidDisconnectEx, sizeof(GuidDisconnectEx),
+		&lpfnDisconnectex_, sizeof(lpfnDisconnectex_), &dwBytes1, NULL, NULL);
 
 	if (ret1 == SOCKET_ERROR)
 	{
 		wprintf(L"WSAIoctl failed with error: %u\n", WSAGetLastError());
 		__debugbreak();
 	}
-
 
 	//sessions_ = new Session * [sessionMax_];
 
@@ -235,7 +225,7 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 
 	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
-	LOG_INFO(L"[NETWORK] server start");
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Start");
 
 	return true;
 }
@@ -256,13 +246,11 @@ void NetServer::Stop()
 
 	WaitForMultipleObjects(workerCount_, hWorkerThread_.data(), TRUE, INFINITE);
 
-
 	/// send thread 종료
 	for (int i = 0; i < SEND_WORKER_COUNT; i++)
 	{
 		PostQueuedCompletionStatus(hSendIOCP_, 0, 0, nullptr);
 	}
-
 
 	for (int i = 0; i < workerCount_; i++)
 	{
@@ -285,9 +273,8 @@ void NetServer::Stop()
 	// IOCP 삭제
 	CloseHandle(hNetworkIOCP_);
 
-	LOG_INFO(L"[NETWORK] server exit");
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Stop");
 }
-
 
 bool NetServer::Disconnect(uint64_t sessionId)
 {
@@ -299,14 +286,10 @@ bool NetServer::Disconnect(uint64_t sessionId)
 		int count = session->ioCount_;
 
 		if (count & RELEASE_MASK)
-		{
 			return false;
-		}
 
 		if (InterlockedCompareExchange(&session->ioCount_, count + 1, count) == count)
-		{
 			break;
-		}
 	}
 
 	// 새로운 세션으로 잘못 얻었다면
@@ -314,19 +297,13 @@ bool NetServer::Disconnect(uint64_t sessionId)
 	{
 		// 새로운 세션의 카운트 감소
 		ReleaseSession(session);
-
 		return false;
 	}
 
-
+	disconnectCountTotal_++;
 	shutdown(session->socket_, SD_BOTH);
-
-
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
-
-	disconnectCountTotal_++;
-
 	return true;
 }
 
@@ -344,22 +321,17 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		int count = session->ioCount_;
 
 		if (count & RELEASE_MASK)
-		{
 			return false;
-		}
 
 		if (InterlockedCompareExchange(&session->ioCount_, count + 1, count) == count)
-		{
 			break;
-		}
 	}
 
 	// 새로운 세션으로 잘못 얻었다면
 	if (session->sessionId_ != sessionId)
 	{
-		// 새로운 세션의 카운트 감소
+		// 세션 보장용 카운트 감소
 		ReleaseSession(session);
-
 		return false;
 	}
 
@@ -368,10 +340,8 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	if (!packet->IsEncoding())
 	{
 		packet->SetNetHeader();
-
 		packet->Encoding();
 	}
-
 
 	/// char* 링버퍼 용도
 	//session->sendQueue_.Enqueue(packet->GetBufferPtr(), packet->TotalUseSize());
@@ -381,12 +351,11 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	packet->AddRef();
 	session->sendQueue_.Enqueue(packet);
 
-	if (session->sendQueue_.Size() > 2000)
+	if (session->sendQueue_.Size() > SEND_SIZE)
 	{
 		Disconnect(sessionId);
-
+		// 세션 보장용 카운트 감소
 		ReleaseSession(session);
-
 		return false;
 	}
 
@@ -399,20 +368,15 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	//InterlockedIncrement(&session->ioCount_);
 	//PostQueuedCompletionStatus(hSendIOCP_, SEND_MESSAGE_NUM, (ULONG_PTR)session, (LPOVERLAPPED)SEND_MESSAGE_NUM);
 
-
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
-
 	return true;
 }
-
 
 unsigned int __stdcall NetServer::AcceptThread(void* param)
 {
 	NetServer* server = (NetServer*)param;
-
 	server->AcceptFunc();
-
 	return 0;
 }
 
@@ -429,6 +393,7 @@ void NetServer::AcceptFunc()
 			if (error == 10038)
 				break;
 
+			/// TODO: 수정
 			wprintf(L"accept() error: %d", error);
 
 			continue;
@@ -453,11 +418,17 @@ void NetServer::CompleteAccept(SOCKET socket)
 	std::string ip = str;
 	int port = ntohs(clientAddr.sin_port);
 
-	// 허용되지 않은 ip와 port라면 바로 연결을 끊음
+	// 해외/공격 IP 차단 + 패치 후 점검 white ip
 	if (!OnConnectionRequest(ip, port))
 	{
 		closesocket(socket);
+		return;
+	}
 
+	if (sessionCount_ >= sessionMax_)
+	{
+		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "sessions full");
+		closesocket(socket);
 		return;
 	}
 
@@ -468,23 +439,18 @@ void NetServer::CompleteAccept(SOCKET socket)
 
 	int index;
 	sessionIndexPool_.Pop(index);
-
-	uint64_t sessionId = ++idSeed_ | (static_cast<uint64_t>(index) << 48);
-
 	Session* session = sessions_[index];
-
-	session->Initialize(sessionId, ip, port);
-	session->socket_ = socket;	
-
 	InterlockedIncrement(&sessionCount_);
 
-	//LOG_INFO(L"[NETWORK] session create id=0x%016llx ip=%S port=%d count=%d", sessionId, ip.c_str(), port, sessionCount_);
+	// 아이디에 세션 배열 인덱스 포함
+	uint64_t sessionId = ++idSeed_ | (static_cast<uint64_t>(index) << 48);
+	session->Initialize(sessionId, ip, port);
+	session->socket_ = socket;
+
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", sessionId, ip.c_str(), port);
 
 	CreateIoCompletionPort((HANDLE)socket, hNetworkIOCP_, (ULONG_PTR)session, 0);
-
-
 	OnAccept(session->sessionId_);
-
 	RecvPost(session);
 }
 
@@ -550,7 +516,7 @@ void NetServer::CompleteAccept(SOCKET socket)
 //
 //	InterlockedIncrement(&(sessionCount_));
 //
-//	//LOG_INFO(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
+//	//LOG(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
 //
 //	/// AcceptEx 완료 후에 IOCP에 등록
 //	CreateIoCompletionPort((HANDLE)acceptSocket, hIOCP_, (ULONG_PTR)session, 0);
@@ -573,9 +539,7 @@ void NetServer::CompleteAccept(SOCKET socket)
 unsigned int __stdcall NetServer::WorkerThread(void* param)
 {
 	NetServer* server = (NetServer*)param;
-
 	server->WorkerFunc();
-
 	return 0;
 }
 
@@ -597,7 +561,7 @@ void NetServer::WorkerFunc()
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
-			LOG_INFO(L"[NETWORK] worker thread exit");
+			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "IO Worker Thread Stop");
 
 			return;
 		}
@@ -614,62 +578,52 @@ void NetServer::WorkerFunc()
 				if (error == ERROR_NETNAME_DELETED)
 				{
 					ReleaseSession(session);
-
 					continue;
 				}
+
 				// 1236 내가 연결을 끊었을때 (closesocket)
 				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
-				else if (error == ERROR_CONNECTION_ABORTED)
+				if (error == ERROR_CONNECTION_ABORTED)
 				{
 					__debugbreak();
-
 					ReleaseSession(session);
-
 					continue;
 				}
-				/// 어떻게 처리해야할까??
+
 				// 121 트래픽 많으면 네트워크 연결 끊어버림
 				// 리모트환경 테스트시 발생
 				// 트래픽 줄여서 다시 테스트
-				else if (error == ERROR_SEM_TIMEOUT)
+				if (error == ERROR_SEM_TIMEOUT)
 				{
 					__debugbreak();
-
 					ReleaseSession(session);
-
 					continue;
 				}
 
-				LOG_INFO(L"GQCS() error: %d", error);
-
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error: %d / id: 0x%016llx", error, session->sessionId_);
 				__debugbreak();
-
 				continue;
 			}
 			// 완료 패킷을 큐에서 제거 안함, 매개변수 값 의미 x
 			else
 			{
 				if (error == WAIT_TIMEOUT)
-				{
 					continue;
-				}
-				// 735 CP 삭제시
-				else if (error == ERROR_ABANDONED_WAIT_0)
-				{
-					// 스레드 종료
+
+				// 735 CP 삭제시 스레드 종료
+				if (error == ERROR_ABANDONED_WAIT_0)
 					return;
-				}
-				else
-				{
-					// GQCS 잘못 호출
-					// 이 상황 배제
-					return;
-				}
+
+				// GQCS 잘못 호출
+				// 이 상황 배제
+				__debugbreak();
+				return;
 			}
 		}
 
 		IO_TYPE type = ((OverlappedEx*)overlapped_)->type_;
 
+		/// TODO: switch 문으로 변경?
 		if (type == IO_TYPE::RECV)
 		{
 			// 상대가 closesocket()시 (rst x) 발생
@@ -684,12 +638,10 @@ void NetServer::WorkerFunc()
 				CompleteRecv(session, numOfBytes);
 			}
 		}
-
 		else if (type == IO_TYPE::SEND)
 		{
 			CompleteSend(session, numOfBytes);
 		}
-
 		//else if (type == IO_TYPE::ACCEPT)
 		//{
 		//	/// Accept 완료 통지는 Completion Key로 listenSocket이 오므로 반드시 따로 처리
@@ -697,7 +649,6 @@ void NetServer::WorkerFunc()
 
 		//	CompleteAccept(sess);
 		//}
-
 		//else if (type == IO_TYPE::DISCONNECT)
 		//{
 		//	CompleteDisconnect(session);
@@ -714,7 +665,6 @@ void NetServer::WorkerFunc()
 unsigned int __stdcall NetServer::SendThread(void* param)
 {
 	NetServer* server = (NetServer*)param;
-
 	server->SendFunc();
 
 	return 0;
@@ -738,17 +688,14 @@ void NetServer::SendFunc()
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
-			LOG_INFO(L"[NETWORK] worker thread exit");
-
+			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "Send Thread Stop");
 			return;
 		}
 
-		if (overlapped_ == (LPOVERLAPPED)SEND_MESSAGE_NUM && numOfBytes == SEND_MESSAGE_NUM)
+		if (overlapped_ == (LPOVERLAPPED)PROTOCOL_SEND_PACKET && numOfBytes == PROTOCOL_SEND_PACKET)
 		{
 			SendPost(session);
-
 			ReleaseSession(session);
-
 			continue;
 		}
 
@@ -764,54 +711,45 @@ void NetServer::SendFunc()
 				if (error == ERROR_NETNAME_DELETED)
 				{
 					ReleaseSession(session);
-
 					continue;
 				}
+
 				// 1236 내가 연결을 끊었을때 (closesocket)
 				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
-				else if (error == ERROR_CONNECTION_ABORTED)
+				if (error == ERROR_CONNECTION_ABORTED)
 				{
 					__debugbreak();
-
 					ReleaseSession(session);
-
 					continue;
 				}
-				/// 어떻게 처리??
+
 				// 121 트래픽 많으면 네트워크 연결 끊어버림
 				// 리모트환경 테스트시 발생
 				// 트래픽 줄여서 다시 테스트
-				else if (error == ERROR_SEM_TIMEOUT)
+				if (error == ERROR_SEM_TIMEOUT)
 				{
 					ReleaseSession(session);
-
 					continue;
 				}
 
-				LOG_INFO(L"GQCS() error: %d", error);
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "Send Thread GQCS() error: %d / id: 0x%016llx", error, session->sessionId_);
 				__debugbreak();
-
 				continue;
 			}
 			// 완료 패킷을 큐에서 제거 안함, 매개변수 값 의미 x
 			else
 			{
 				if (error == WAIT_TIMEOUT)
-				{
 					continue;
-				}
-				// 735 CP 삭제시
-				else if (error == ERROR_ABANDONED_WAIT_0)
-				{
-					// 스레드 종료
+
+				// 735 CP 삭제시 스레드 종료
+				if (error == ERROR_ABANDONED_WAIT_0)
 					return;
-				}
-				else
-				{
-					// GQCS 잘못 호출
-					// 이 상황 배제
-					return;
-				}
+
+				// GQCS 잘못 호출
+				// 이 상황 배제
+				__debugbreak();
+				return;
 			}
 		}
 	}

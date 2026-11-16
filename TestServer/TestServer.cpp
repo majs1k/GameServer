@@ -1,34 +1,23 @@
 #include "TestServer.h"
-
 #include "Utils/Packet.h"
 #include "Utils/Logger.h"
 #include "Utils/Profiler.h"
-#include "Utils/TickController.h"
 #include <Windows.h>
 
 TestServer::TestServer()
 {
 	logicThread_ = std::thread(LogicThread, this);
-
 	monitorThread_ = std::thread(monitorThread, this);
 }
 
 TestServer::~TestServer()
 {
 	logicThread_.join();
-
 	monitorThread_.join();
 }
 
 bool TestServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (sessionCount_ >= sessionMax_)
-	{
-		LOG(L"[Network] session limit over");
-
-		return false;
-	}
-
 	return true;
 }
 

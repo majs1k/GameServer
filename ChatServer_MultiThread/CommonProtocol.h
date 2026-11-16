@@ -235,3 +235,21 @@ enum ELOGIN
 	FAIL = 0,
 	SUCCESS = 1,
 };
+
+
+struct Pkt_SectorMove 
+{
+	int64_t playerId_;
+	unsigned short sectorX_;
+	unsigned short sectorY_;
+};
+
+struct Pkt_Chat 
+{
+	int64_t playerId_;
+	LoginId loginId_;
+	Nickname nickname_;
+	Chat chat_;
+	unsigned short sectorX_;
+	unsigned short sectorY_;
+};

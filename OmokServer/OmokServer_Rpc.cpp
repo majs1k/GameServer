@@ -125,7 +125,6 @@ bool OmokServer::ReqChat(__int64 sessionId, std::string& message)
 	// 게임룸 내 사람들끼리 채팅
 	else if (player->state_ == PLAYER_STATE::GAMEROOM)
 	{
-		// TODO: 코드 개선
 		player->gameRoom_->BraodcastChat(player, message);
 	}
 

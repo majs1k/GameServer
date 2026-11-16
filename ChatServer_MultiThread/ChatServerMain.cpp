@@ -1,7 +1,8 @@
 #include <conio.h>
-#include "ChatServer.h"
+#include "ChatServer_Multi.h"
 #include "Utils/ConfigLoader.h"
 #include "Utils/CrashDump.h"
+#include "Utils/Logger.h"
 #include "Utils/Profiler.h"
 
 #define CONFIG_FILENAME			L"ChatConfig.json"
@@ -12,9 +13,9 @@ int main()
 
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 
+	LOG_INIT("./Log", ELOG_MODE::ERROR_MODE);
 	Profiler::Start();
-
-	ChatServer server;
+	ChatServer_Multi server;
 
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);
 

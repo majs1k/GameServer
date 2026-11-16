@@ -1,10 +1,10 @@
-#include "ChatServer.h"
+#include "ChatServer_Multi.h"
 #include "RpcModule.h"
 #include "RPC/RpcProxy.h"
 #include "Utils/Logger.h"
 
 
-bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
 {
 	Player* player;
 
@@ -29,10 +29,10 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		return true;
 	}
 
-
 	auto it2 = tls_PlayerMap_.find(playerId);
 
-	// 중복 접속 시 기존 접속 종료
+	// 중복 접속 시 기존 접속만 종료
+	// 어택 x 더미를 로컬에서 같이 테스트시 발생 불가 (RST 유실 발생 안함)
 	if (it2 != tls_PlayerMap_.end())
 	{
 		Player* alreadyLoginedPlayer = it2->second;
@@ -52,13 +52,13 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 			worldMap_[mapY][mapX].remove(alreadyLoginedPlayer);
 		}
 
-		++dupLoginCountTotal_;
+		dupLoginCountTotal_++;
 
 		// Disconnect 이후론 로직 없어야함
 		Disconnect(alreadyLoginedPlayer->sessionId_);
 	}
 
-	// TODO: 세션 키 인증
+	// + 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
 
@@ -73,7 +73,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	return true;
 }
 
-bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
+bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY)
 {
 	Player* player;
 
@@ -109,7 +109,7 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	}
 
 
-	int targetMapId = SectorToMapId(sectorX, sectorY);
+	int mapId = SectorToMapId(sectorX, sectorY);
 
 	if (player->isInitSector_)
 	{
@@ -125,7 +125,7 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	}
 
 
-	if (targetMapId == tls_MapId_)
+	if (mapId == tls_MapId_)
 	{
 		player->sectorX_ = sectorX;
 		player->sectorY_ = sectorY;
@@ -140,25 +140,18 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	{
 		tls_PlayerMap_.erase(player->playerId_);
 
-
 		Message* message = messagePool_.Alloc();
 		//Message* message = new Message();
 
-		Packet* packet = packetPool_.Alloc();
-		packet->Initialize(sizeof(NET_HEADER));
+		CreatePkt_SS_ReqSectorMove(message, sessionId, playerId, sectorX, sectorY);
 
-		*packet << playerId << sectorX << sectorY;
-
-		/// player 추가
-		message->Initialize(sessionId, packet, SS_SECTOR_MOVE);
-
-		messageQueue_[targetMapId].Enqueue(message);
+		messageQueue_[mapId].Enqueue(message);
 
 		return true;
 	}
 }
 
-bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
+bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 {
 	Player* player;
 
@@ -195,11 +188,6 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	std::vector<uint64_t> sessionIds;
 
-	std::vector<unsigned short> sectorX[4];
-	std::vector<unsigned short> sectorY[4];
-
-
-
 	for (int i = 0; i < 3; i++)
 	{
 		for (int j = 0; j < 3; j++)
@@ -216,17 +204,22 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 			{
 				for (auto& target : worldMap_[SectorToMapY(sectorNY)][SectorToMapX(sectorNX)])
 				{
-					//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
 					if (target->isLogin_)
 					{
+						//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
 						sessionIds.push_back(target->sessionId_);
 					}
 				}
 			}
 			else
 			{
-				sectorX[mapId].push_back(sectorNX);
-				sectorY[mapId].push_back(sectorNY);
+				/// 다른 맵(스레드)로 메세지 전달
+				Message* message = messagePool_.Alloc();
+				//Message* message = new Message();
+
+				CreatePkt_SS_ReqChat(message, sessionId, player->playerId_,  player->loginId_, player->nickname_, chat, sectorNX, sectorNY);
+
+				messageQueue_[mapId].Enqueue(message);
 			}
 		}
 	}
@@ -234,32 +227,10 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	/// packet 재활용
 	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
 
-
-	for (int i = 0; i < 4; i++)
-	{
-		//if (i == tls_MapId_)
-		//	continue;
-
-		if (sectorX[i].size() == 0)
-			continue;
-
-		Message* message = messagePool_.Alloc();
-		//Message* message = new Message();
-
-		Packet* packet = packetPool_.Alloc();
-		packet->Initialize(sizeof(NET_HEADER));
-
-		*packet << playerId << chat << sectorX[i] << sectorY[i];
-
-		message->Initialize(sessionId, packet, SS_CHAT);
-
-		messageQueue_[i].Enqueue(message);
-	}
-
 	return true;
 }
 
-bool ChatServer::CS_ReqHeartbeat(uint64_t sessionId)
+bool ChatServer_Multi::CS_ReqHeartbeat(uint64_t sessionId)
 {
 	Player* player;
 
