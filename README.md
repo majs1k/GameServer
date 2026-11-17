@@ -1,8 +1,6 @@
 # IOCPGameServer
 
-게임 서버 프로젝트입니다.
-
-Tech     : C++14, MySQL
+Tech     : C++17, MySQL
 
 Platform : Windows / Visual Studio 2022
 
@@ -89,7 +87,6 @@ WSASend() 호출시 wsabuf count 0인 상황 발생시 10022 에러 발생
 ### 26-08-18
 ```
 Rpc 코드를 헤더파일로만 작동하도록 수정했다가 롤백 (RpcModule 코드를 사용할수 없게 되어서 불가능함)
-Rpc 인자 레퍼런스 적용 가능
 ```
 
 ### 26-08-29
@@ -104,9 +101,6 @@ db 정의파일 및 자동생성 코드
 
 ### 26-10-31
 ```
-로직 스레드는 직렬 처리되므로 매번 수신 로직마다 if(map.count(xxx) > 0) ... 이런식으로 처리할 필요 없음. 
-(이미 100% 생성될수밖에 없는 상황인 경우라면)
-
 isLogin, isInitSector 등 로직 확인용 변수는 따로 관리하는 것이 실수가 적음
 if(sectorX < 0) 이런식으로 관리하는 방식에 비하여...
 
@@ -114,7 +108,7 @@ if(sectorX < 0) 이런식으로 관리하는 방식에 비하여...
 로그 flush 적용
 rpc 인자 레퍼런스 적용
 sessionId vector 오버로딩 적용
-중복 로그인 처리 -> 둘다 연결 종료
+중복 로그인 처리
 sessionId , Player* 로 해시맵 수정
 ```
 
@@ -122,5 +116,5 @@ sessionId , Player* 로 해시맵 수정
 ```
 lock_guard + {}
 
-락프리큐 일부 수정_
+락프리큐 수정
 ```

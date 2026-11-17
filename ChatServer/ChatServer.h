@@ -7,7 +7,6 @@
 #include "Utils/Packet.h"
 #include "Utils/LockFreeQueue.h"
 #include "Utils/MemoryPool.h"
-
 #include "CommonProtocol.h"
 #include "RPC/RpcStub.h"
 
@@ -39,12 +38,7 @@ private:
 		Packet* packet_;
 		ushort protocol_;
 
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
-		{
-			sessionId_ = sessionId;
-			packet_ = packet;
-			protocol_ = protocol;
-		}
+		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol);
 	};
 
 	enum PROTOCOL

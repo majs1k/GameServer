@@ -26,7 +26,6 @@ void ChatServer_Multi::ProcessMessageQueue()
 		{
 			messageCount_CS_NETWORK_PACKET_++;
 
-			/// 네트워크 패킷 처리 (타입 자료형 주의)
 			if (!PacketProc(sessionId, packet))
 			{
 				Disconnect(sessionId);
@@ -39,32 +38,27 @@ void ChatServer_Multi::ProcessMessageQueue()
 
 			messageCount_SS_CreatePlayer_++;
 			SS_CreatePlayer(sessionId);
-
 			break;
 
 		case SS_REMOVE_PLAYER:
 
 			messageCount_SS_RemovePlayer_++;
 			SS_RemovePlayer(sessionId);
-
 			break;
 
 		case SS_CHECK_TIMEOUT:
 
 			SS_CheckTimeout();
-
 			break;
 
 		case SS_SECTOR_MOVE:
 
 			SS_ReqSectorMove(sessionId, packet);
-
 			break;
 
 		case SS_CHAT:
-			
+
 			SS_ReqChat(sessionId, packet);
-		
 			break;
 
 		default:
@@ -81,10 +75,11 @@ void ChatServer_Multi::ProcessMessageQueue()
 		}
 
 		if (packet != nullptr)
+		{
 			packet->Free();
+		}
 
 		messagePool_.Free(message);
-		//delete message;
 	}
 }
 
@@ -92,8 +87,6 @@ void ChatServer_Multi::ProcessMessageQueue()
 void ChatServer_Multi::CreatePlayer(uint64_t sessionId)
 {
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, nullptr, SS_CREATE_PLAYER);
 
 	messageQueue_[INITIAL_MAP_ID].Enqueue(message);
@@ -117,8 +110,6 @@ void ChatServer_Multi::RemovePlayer(uint64_t sessionId)
 	}
 
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, nullptr, SS_REMOVE_PLAYER);
 
 	messageQueue_[player->mapId_].Enqueue(message);
@@ -129,8 +120,6 @@ void ChatServer_Multi::CheckTimeout()
 	for (int i = 0; i < MAP_COUNT; i++)
 	{
 		Message* message = messagePool_.Alloc();
-		//Message* message = new Message();
-
 		message->Initialize(0, nullptr, SS_CHECK_TIMEOUT);
 
 		messageQueue_[i].Enqueue(message);
@@ -141,7 +130,6 @@ void ChatServer_Multi::CheckTimeout()
 void ChatServer_Multi::SS_CreatePlayer(uint64_t sessionId)
 {
 	Player* player = playerPool_.Alloc();
-	//Player* player = new Player();
 
 	player->Initialize(sessionId);
 
@@ -162,9 +150,7 @@ void ChatServer_Multi::SS_RemovePlayer(uint64_t sessionId)
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return;
-		}
 
 		player = it->second;
 
@@ -189,16 +175,13 @@ void ChatServer_Multi::SS_RemovePlayer(uint64_t sessionId)
 	// + 다른 플레이어들에게 퇴장 알림
 
 	playerPool_.Free(player);
-	//delete player;
 }
 
 void ChatServer_Multi::SS_CheckTimeout()
 {
-	// 타임아웃 플레이어 세션 종료
 	for (auto& pm : tls_PlayerMap_)
 	{
 		Player* p = pm.second;
-
 		uint64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
 
 		if (timeDiff > TIMEOUT_MS)
@@ -247,7 +230,6 @@ void ChatServer_Multi::SS_ReqSectorMove(uint64_t sessionId, Packet* packet)
 	int64_t playerId = pkt->playerId_;
 	ushort sectorX = pkt->sectorX_;
 	ushort sectorY = pkt->sectorY_;
-
 	Player* player;
 
 	{
@@ -267,7 +249,6 @@ void ChatServer_Multi::SS_ReqSectorMove(uint64_t sessionId, Packet* packet)
 
 	tls_PlayerMap_[sessionId] = player;
 
-
 	if (sectorX < 0 || sectorX >= 50 || sectorY < 0 || sectorY >= 50)
 		__debugbreak();
 
@@ -284,7 +265,6 @@ void ChatServer_Multi::SS_ReqChat(uint64_t sessionId, Packet* packet)
 	Pkt_Chat* pkt = reinterpret_cast<Pkt_Chat*>(packet->GetBufferPtr());
 
 	int64_t playerId = pkt->playerId_;
-
 	std::vector<uint64_t> sessionIds;
 
 	for (auto& target : worldMap_[SectorToMapY(pkt->sectorY_)][SectorToMapX(pkt->sectorX_)])

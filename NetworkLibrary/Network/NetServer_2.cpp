@@ -7,28 +7,45 @@
 
 void NetServer::RecvPost(Session* session)
 {
+	//ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
+
+	//WSABUF wsaBuf[2];
+	//DWORD flags = 0;
+	//int retval;
+
+	//wsaBuf[0].buf = session->recvQueue_.GetRearBufferPtr();
+	//wsaBuf[0].len = session->recvQueue_.DirectEnqueueSize();
+
+	//if (session->recvQueue_.FreeSize() == session->recvQueue_.DirectEnqueueSize())
+	//{
+	//	retval = WSARecv(session->socket_, wsaBuf, 1, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
+	//}
+	//else
+	//{
+	//	wsaBuf[1].buf = session->recvQueue_.GetBufferPtr();
+	//	wsaBuf[1].len = session->recvQueue_.FreeSize() - session->recvQueue_.DirectEnqueueSize();
+
+	//	retval = WSARecv(session->socket_, wsaBuf, 2, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
+	//}
+
 	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
 	DWORD flags = 0;
-	int retval;
+	int bufferCount = 1;
 
 	wsaBuf[0].buf = session->recvQueue_.GetRearBufferPtr();
 	wsaBuf[0].len = session->recvQueue_.DirectEnqueueSize();
 
-	if (session->recvQueue_.FreeSize() == session->recvQueue_.DirectEnqueueSize())
-	{
-		retval = WSARecv(session->socket_, wsaBuf, 1, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
-	}
-	else
+	if (session->recvQueue_.FreeSize() != session->recvQueue_.DirectEnqueueSize())
 	{
 		wsaBuf[1].buf = session->recvQueue_.GetBufferPtr();
 		wsaBuf[1].len = session->recvQueue_.FreeSize() - session->recvQueue_.DirectEnqueueSize();
 
-		retval = WSARecv(session->socket_, wsaBuf, 2, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
+		bufferCount = 2;
 	}
- 
- 
+
+	int retval = WSARecv(session->socket_, wsaBuf, bufferCount, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
 
 	if (retval == SOCKET_ERROR)
 	{

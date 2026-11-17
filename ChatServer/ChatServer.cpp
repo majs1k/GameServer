@@ -11,9 +11,6 @@ void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname
 	nickname_ = nickname;
 	isLogin_ = true;
 	//isInitSector_ = false;
-
-	//lastChatTime_ = 0;
-	//curChatCount_ = 0;
 }
 
 void ChatServer::Player::Initialize(uint64_t sessionId)
@@ -23,11 +20,17 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 	isInitSector_ = false;
 }
 
+void ChatServer::Message::Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+{
+	sessionId_ = sessionId;
+	packet_ = packet;
+	protocol_ = protocol;
+}
 
 ChatServer::ChatServer()
 {
 	g_RpcProxy.serverProxy_ = this;
-	
+
 	logicThread_ = std::thread(LogicThread, this);
 	schedulerThread_ = std::thread(SchedulerThread, this);
 	monitorThread_ = std::thread(MonitorThread, this);
@@ -85,7 +88,9 @@ void ChatServer::SchedulerThread(ChatServer* server)
 	while (!server->shutdown_)
 	{
 		if (cnt % 10 == 0)
+		{
 			server->CheckTimeout();
+		}
 
 		cnt++;
 

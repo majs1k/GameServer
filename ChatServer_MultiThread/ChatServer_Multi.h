@@ -42,12 +42,7 @@ private:
 		ushort protocol_;
 		Player* player_;
 
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
-		{
-			sessionId_ = sessionId;
-			packet_ = packet;
-			protocol_ = protocol;
-		}
+		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol);
 	};
 
 	enum PROTOCOL

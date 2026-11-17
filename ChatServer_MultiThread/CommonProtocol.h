@@ -237,14 +237,14 @@ enum ELOGIN
 };
 
 
-struct Pkt_SectorMove 
+struct Pkt_SectorMove
 {
 	int64_t playerId_;
 	unsigned short sectorX_;
 	unsigned short sectorY_;
 };
 
-struct Pkt_Chat 
+struct Pkt_Chat
 {
 	int64_t playerId_;
 	LoginId loginId_;

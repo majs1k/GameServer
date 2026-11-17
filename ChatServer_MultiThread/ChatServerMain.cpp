@@ -24,7 +24,7 @@ int main()
 			break;
 		}
 
-		//if (GetAsyncKeyState('X') & 0x0001)
+		//else if (GetAsyncKeyState('X') & 0x0001)
 		//	break;
 
 		Sleep(1000);

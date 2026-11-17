@@ -232,7 +232,6 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 }
 
 
-
 void LanServer::SendPost(Session* session)
 {
 	if (InterlockedExchange(&session->sendPending_, 1) == 1)

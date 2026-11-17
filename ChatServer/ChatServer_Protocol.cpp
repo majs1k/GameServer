@@ -23,7 +23,6 @@ void ChatServer::ProcessMessageQueue()
 		{
 			messageCount_CS_NETWORK_PACKET_++;
 
-			/// 네트워크 패킷 처리 (타입 자료형 주의)
 			if (!PacketProc(sessionId, packet))
 			{
 				Disconnect(sessionId);
@@ -36,20 +35,17 @@ void ChatServer::ProcessMessageQueue()
 
 			messageCount_SS_CreatePlayer_++;
 			SS_CreatePlayer(sessionId);
-
 			break;
 
 		case SS_REMOVE_PLAYER:
 
 			messageCount_SS_RemovePlayer_++;
 			SS_RemovePlayer(sessionId);
-
 			break;
 
 		case SS_CHECK_TIMEOUT:
 
 			SS_CheckTimeout();
-
 			break;
 
 		default:
@@ -66,10 +62,11 @@ void ChatServer::ProcessMessageQueue()
 		}
 
 		if (packet != nullptr)
+		{
 			packet->Free();
+		}
 
 		messagePool_.Free(message);
-		//delete message;
 	}
 }
 
@@ -77,8 +74,6 @@ void ChatServer::ProcessMessageQueue()
 void ChatServer::CreatePlayer(uint64_t sessionId)
 {
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, nullptr, SS_CREATE_PLAYER);
 
 	messageQueue_.Enqueue(message);
@@ -87,8 +82,6 @@ void ChatServer::CreatePlayer(uint64_t sessionId)
 void ChatServer::RemovePlayer(uint64_t sessionId)
 {
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, nullptr, SS_REMOVE_PLAYER);
 
 	messageQueue_.Enqueue(message);
@@ -97,8 +90,6 @@ void ChatServer::RemovePlayer(uint64_t sessionId)
 void ChatServer::CheckTimeout()
 {
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(0, nullptr, SS_CHECK_TIMEOUT);
 
 	messageQueue_.Enqueue(message);
@@ -108,8 +99,6 @@ void ChatServer::CheckTimeout()
 void ChatServer::SS_CreatePlayer(uint64_t sessionId)
 {
 	Player* player = playerPool_.Alloc();
-	//Player* player = new Player();
-
 	player->Initialize(sessionId);
 
 	sessionIdToPlayer_.insert({ player->sessionId_ , player });
@@ -120,9 +109,7 @@ void ChatServer::SS_RemovePlayer(uint64_t sessionId)
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-	{
 		return;
-	}
 
 	Player* player = it->second;
 
@@ -143,16 +130,13 @@ void ChatServer::SS_RemovePlayer(uint64_t sessionId)
 	// + 다른 플레이어들에게 퇴장 알림
 
 	playerPool_.Free(player);
-	//delete player;
 }
 
 void ChatServer::SS_CheckTimeout()
 {
-	// 타임아웃 플레이어 세션 종료
 	for (auto& pm : playerMap_)
 	{
 		Player* p = pm.second;
-
 		uint64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
 
 		if (timeDiff > TIMEOUT_MS)

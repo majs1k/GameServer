@@ -15,6 +15,7 @@
 #include "../Utils/LockFreeStack.h"
 #include "../Utils/LockFreeQueue.h"
 
+// HACK: 헤더 변경시 수정
 #define SEND_SIZE				1000
 #define RECV_SIZE				500
 
@@ -113,6 +114,7 @@ private:
 	/// TODO: 수정
 	//Session** sessions_;
 	Session* sessions_[20000];
+	//std::vector<Session*> sessions_;
 	LockFreeStack<int> sessionIndexPool_;
 	std::atomic<uint64_t> idSeed_ = 0;
 

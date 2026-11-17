@@ -227,7 +227,6 @@ public:
 		char* buffer = GetBodyPtr() - 1;
 
 		int s = 0;
-
 		unsigned char p = 0;
 		unsigned char e = 0;
 
@@ -237,7 +236,6 @@ public:
 			e = p ^ (e + NET_KEY + s + 1);
 
 			buffer[s] = e;
-
 			s++;
 		}
 
@@ -253,10 +251,8 @@ public:
 		char* buffer = GetHeaderPtr() + 4;
 
 		int s = 0;
-
 		unsigned char p;
 		unsigned char d;
-
 		unsigned char oldE = 0;
 		unsigned char oldP = 0;
 
@@ -269,7 +265,6 @@ public:
 			oldP = p;
 
 			buffer[s] = d;
-
 			s++;
 		}
 	}

@@ -9,9 +9,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-	{
 		return false;
-	}
 
 	Player* player = it->second;
 
@@ -35,7 +33,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		alreadyLoginedPlayer->isLogin_ = false;
 		playerCount_--;
 
-		// 반드시 여기서 삭제
+		/// TODO: 반드시 여기서 삭제 -> 굳이?
 		playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
 		if (alreadyLoginedPlayer->isInitSector_)
@@ -44,10 +42,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		}
 
 		dupLoginCountTotal_++;
-
-		// Disconnect 이후론 로직 없어야함
 		Disconnect(alreadyLoginedPlayer->sessionId_);
-
 		LOG("CHATSERVER", ELOG::SYSTEM_LEVEL, "duplicate login / id: %d", playerId);
 	}
 
@@ -55,11 +50,9 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 	player->Initialize(playerId, loginId, nickname);
 	playerMap_.insert({ playerId, player });
-
 	playerCount_++;
 
 	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
-
 	return true;
 }
 
@@ -68,9 +61,7 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-	{
 		return false;
-	}
 
 	Player* player = it->second;
 
@@ -81,14 +72,12 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	{
 		//__debugbreak();
 		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
-
 		return false;
 	}
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		LOG("ChatServer", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d",player->playerId_, sectorX, sectorY);
-
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d", player->playerId_, sectorX, sectorY);
 		return false;
 	}
 
@@ -114,7 +103,6 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	sector_[player->sectorY_][player->sectorX_].push_back(player);
 
 	g_RpcProxy.SC_ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
-
 	return true;
 }
 
@@ -123,9 +111,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-	{
 		return false;
-	}
 
 	Player* player = it->second;
 
@@ -135,7 +121,6 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	if (!player->isInitSector_)
 	{
 		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id: %d", player->playerId_);
-
 		return false;
 	}
 
@@ -143,7 +128,6 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	{
 		//__debugbreak();
 		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id: %d", playerId);
-
 		return false;
 	}
 
@@ -172,7 +156,6 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	/// packet 재활용
 	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
-
 	return true;
 }
 
@@ -181,9 +164,7 @@ bool ChatServer::CS_ReqHeartbeat(uint64_t sessionId)
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-	{
 		return false;
-	}
 
 	Player* player = it->second;
 

@@ -8,24 +8,24 @@ void ChatServer_Multi::Player::Initialize(int64_t playerId, LoginId& loginId, Ni
 {
 	playerId_ = playerId;
 	loginId_ = loginId;
-
 	nickname_ = nickname;
-
 	isLogin_ = true;
 	//isInitSector_ = false;
-
-	//lastChatTime_ = 0;
-	//curChatCount_ = 0;
 }
 
 void ChatServer_Multi::Player::Initialize(uint64_t sessionId)
 {
 	sessionId_ = sessionId;
-
 	isLogin_ = false;
 	isInitSector_ = false;
 }
 
+void ChatServer_Multi::Message::Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+{
+	sessionId_ = sessionId;
+	packet_ = packet;
+	protocol_ = protocol;
+}
 
 ChatServer_Multi::ChatServer_Multi()
 {
@@ -110,7 +110,9 @@ void ChatServer_Multi::SchedulerThread(ChatServer_Multi* server)
 	while (!server->shutdown_)
 	{
 		if (cnt % 10 == 0)
+		{
 			server->CheckTimeout();
+		}
 
 		cnt++;
 

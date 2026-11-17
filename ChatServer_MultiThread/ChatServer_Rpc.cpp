@@ -14,9 +14,7 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return false;
-		}
 
 		player = it->second;
 	}
@@ -25,7 +23,6 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	if (player->isLogin_)
 	{
 		g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::FAIL, playerId);
-
 		return true;
 	}
 
@@ -43,7 +40,6 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 		// 반드시 여기서 삭제
 		tls_PlayerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
-
 		if (alreadyLoginedPlayer->isInitSector_)
 		{
 			int mapX = SectorToMapX(alreadyLoginedPlayer->sectorX_);
@@ -53,23 +49,17 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 		}
 
 		dupLoginCountTotal_++;
-
-		// Disconnect 이후론 로직 없어야함
 		Disconnect(alreadyLoginedPlayer->sessionId_);
 	}
 
 	// + 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
-
 	playerCount_++;
-
 	/// 초기 맵에서 생성
 	tls_PlayerMap_.insert({ playerId, player });
 
-
 	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
-
 	return true;
 }
 
@@ -83,9 +73,7 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return false;
-		}
 
 		player = it->second;
 	}
@@ -96,18 +84,15 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		//LOG(L"reqmessage playerid error");
-
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
 		return false;
 	}
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		//LOG(L"not valid sector");
-
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d", player->playerId_, sectorX, sectorY);
 		return false;
 	}
-
 
 	int mapId = SectorToMapId(sectorX, sectorY);
 
@@ -116,14 +101,12 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 		int oldMapX = SectorToMapX(player->sectorX_);
 		int oldMapY = SectorToMapY(player->sectorY_);
 
-
 		worldMap_[oldMapY][oldMapX].remove(player);
 	}
 	else
 	{
 		player->isInitSector_ = true;
 	}
-
 
 	if (mapId == tls_MapId_)
 	{
@@ -133,7 +116,6 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 		worldMap_[SectorToMapY(player->sectorY_)][SectorToMapX(player->sectorX_)].push_back(player);
 
 		g_RpcProxy.SC_ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
-
 		return true;
 	}
 	else
@@ -141,12 +123,9 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 		tls_PlayerMap_.erase(player->playerId_);
 
 		Message* message = messagePool_.Alloc();
-		//Message* message = new Message();
-
 		CreatePkt_SS_ReqSectorMove(message, sessionId, playerId, sectorX, sectorY);
 
 		messageQueue_[mapId].Enqueue(message);
-
 		return true;
 	}
 }
@@ -161,9 +140,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return false;
-		}
 
 		player = it->second;
 	}
@@ -173,16 +150,14 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 
 	if (!player->isInitSector_)
 	{
-		//LOG(L"not init sector");
-
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id: %d", player->playerId_);
 		return false;
 	}
 
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		//LOG(L"reqmessage playerid error");
-
+		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id: %d", playerId);
 		return false;
 	}
 
@@ -215,9 +190,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 			{
 				/// 다른 맵(스레드)로 메세지 전달
 				Message* message = messagePool_.Alloc();
-				//Message* message = new Message();
-
-				CreatePkt_SS_ReqChat(message, sessionId, player->playerId_,  player->loginId_, player->nickname_, chat, sectorNX, sectorNY);
+				CreatePkt_SS_ReqChat(message, sessionId, player->playerId_, player->loginId_, player->nickname_, chat, sectorNX, sectorNY);
 
 				messageQueue_[mapId].Enqueue(message);
 			}
@@ -240,9 +213,7 @@ bool ChatServer_Multi::CS_ReqHeartbeat(uint64_t sessionId)
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return false;
-		}
 
 		player = it->second;
 	}

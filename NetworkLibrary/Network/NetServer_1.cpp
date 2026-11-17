@@ -75,8 +75,7 @@ NetServer::NetServer()
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 	{
-		/// TODO: 수정
-		wprintf(L"WSAStartup() error");
+		__debugbreak();
 	}
 }
 
@@ -97,8 +96,7 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	listenSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 	if (listenSocket_ == INVALID_SOCKET)
 	{
-		/// TODO: 수정
-		wprintf(L"socket() error");
+		__debugbreak();
 	}
 
 	/// 링거 - closesocekt() 호출시 즉시 리턴, 연결 강제 종료
@@ -223,10 +221,15 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 		sessions_[i] = new Session();
 	}
 
+	//for (int i = 0; i < sessionMax_; i++)
+	//{
+	//	Session* session = new Session();
+	//	sessions_.push_back(session);
+	//}
+
 	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Start");
-
 	return true;
 }
 
@@ -268,6 +271,8 @@ void NetServer::Stop()
 		delete sessions_[i];
 	}
 
+	//sessions_.clear();
+
 	//sessionIndex_.Clear();
 
 	// IOCP 삭제
@@ -304,6 +309,7 @@ bool NetServer::Disconnect(uint64_t sessionId)
 	shutdown(session->socket_, SD_BOTH);
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "disconnect / id: 0x%016llx", sessionId);
 	return true;
 }
 
@@ -335,10 +341,9 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		return false;
 	}
 
-
-	///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
 	if (!packet->IsEncoding())
 	{
+		// HACK: 헤더 변경시 수정
 		packet->SetNetHeader();
 		packet->Encoding();
 	}
@@ -393,10 +398,7 @@ void NetServer::AcceptFunc()
 			if (error == 10038)
 				break;
 
-			/// TODO: 수정
-			wprintf(L"accept() error: %d", error);
-
-			continue;
+			__debugbreak();
 		}
 
 		CompleteAccept(clientSock);
@@ -555,7 +557,7 @@ void NetServer::WorkerFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, (PULONG_PTR)&session, &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		//PRO(L"GQCS()");
 
@@ -622,7 +624,8 @@ void NetServer::WorkerFunc()
 			}
 		}
 
-		IO_TYPE type = ((OverlappedEx*)overlapped_)->type_;
+		/// TODO: 확인
+		IO_TYPE type = (reinterpret_cast<OverlappedEx*>(overlapped_))->type_;
 
 		/// TODO: switch 문으로 변경?
 		if (type == IO_TYPE::RECV)
@@ -683,7 +686,7 @@ void NetServer::SendFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hSendIOCP_, &numOfBytes, (PULONG_PTR)&session, &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(hSendIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		//PRO(L"GQCS()");
 
@@ -805,4 +808,3 @@ void NetServer::SendFunc()
 // 
 // 10065 WSAEHOSTUNREACH
 // 인터넷 연결 안되었는데 connect
-

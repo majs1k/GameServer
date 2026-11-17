@@ -44,19 +44,19 @@ void TestServer::OnRelease(uint64_t sessionId)
 void TestServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	/// IO 스레드에서 패킷 처리
-	//if (!PacketProc(sessionId, packet))
-	//{
-	//	Disconnect(sessionId);
-	//}
+	if (!PacketProc(sessionId, packet))
+	{
+		Disconnect(sessionId);
+	}
 
 	/// 로직 스레드에서 패킷 처리
-	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
+	//Message* message = messagePool_.Alloc();
+	////Message* message = new Message();
 
-	message->Initialize(sessionId, packet, 0);
+	//message->Initialize(sessionId, packet, 0);
 
-	packet->AddRef();
-	messageQueue_.Enqueue(message);
+	//packet->AddRef();
+	//messageQueue_.Enqueue(message);
 }
 
 void TestServer::LogicThread(TestServer* server)
@@ -86,23 +86,26 @@ void TestServer::ProcessMessageQueue()
 			Disconnect(sessionId);
 		}
 
-
 		if (packet != nullptr)
+		{
 			packet->Free();
+		}
 
 		messagePool_.Free(message);
 	}
 }
+
+int test = 0;
 
 bool TestServer::PacketProc(uint64_t sessionId, Packet* packet)
 {
 	uint64_t data;
 	*packet >> data;
 
+	test = data;
+
 	if (packet->IsError())
-	{
 		return false;
-	}
 
 	Packet* packet2 = packetPool_.Alloc();
 	packet2->Initialize(sizeof(LAN_HEADER));
