@@ -11,7 +11,7 @@ int main()
 {
 	CrashDump().Initialize();
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
-	LOG_INIT("./Log", ELOG_MODE::ERROR_MODE);
+	LOG_INIT("./Log", ELOG_MODE::NONE_MODE);
 
 	ChatServer server;
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);
@@ -27,16 +27,9 @@ int main()
 		//else if (GetAsyncKeyState('X') & 0x0001)
 		//	break;
 
-		//else if (GetAsyncKeyState(VK_SPACE) & 0x0001)
-		//	ProfilerManager::Instance().Save();
-
-		//else if (GetAsyncKeyState('C') & 0x0001)
-		//	ProfilerManager::Instance().Clear();
-
 		Sleep(1000);
 	}
 
 	server.Stop();
-
 	return 0;
 }

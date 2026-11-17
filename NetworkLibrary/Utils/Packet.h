@@ -63,7 +63,7 @@ struct MY_HEADER
 
 #pragma pack(pop)
 
-/// TODO: 수정
+// HACK: 헤더 변경시 수정
 #define PACKET_CAPACITY				1000
 #define HEADER_CAPACITY				5
 
@@ -218,7 +218,7 @@ public:
 		return true;
 	}
 
-	void Encoding()
+	/*void Encoding()
 	{
 		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
 		unsigned char randKey = header->randKey_;
@@ -279,6 +279,62 @@ public:
 			oldP = p;
 
 			buffer[s] = d;
+		}
+	}*/
+
+	void Encoding()
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+		unsigned char randKey = header->randKey_;
+
+		/// 체크섬부터 인코딩
+		char* buffer = GetBodyPtr() - 1;
+
+		int s = 0;
+
+		unsigned char p = 0;
+		unsigned char e = 0;
+
+		while (s < UseSize() + 1)
+		{
+			p = buffer[s] ^ (p + randKey + s + 1);
+			e = p ^ (e + NET_KEY + s + 1);
+
+			buffer[s] = e;
+
+			s++;
+		}
+
+		isEncoding_ = true;
+	}
+
+	void Decoding()
+	{
+		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
+		unsigned char randKey = header->randKey_;
+
+		/// 체크섬부터 디코딩
+		char* buffer = GetHeaderPtr() + 4;
+
+		int s = 0;
+
+		unsigned char p;
+		unsigned char d;
+
+		unsigned char oldE = 0;
+		unsigned char oldP = 0;
+
+		while (s < UseSize() + 1)
+		{
+			p = buffer[s] ^ (oldE + NET_KEY + s + 1);
+			d = p ^ (oldP + randKey + s + 1);
+
+			oldE = buffer[s];
+			oldP = p;
+
+			buffer[s] = d;
+
+			s++;
 		}
 	}
 

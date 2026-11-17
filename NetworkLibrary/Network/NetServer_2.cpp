@@ -326,7 +326,6 @@ void NetServer::SendPost(Session* session)
 	//int count = min(session->sendQueue_.UseSize(), MAX_WSABUF);
 	int count = min(session->sendQueue_.Size(), MAX_WSABUF);
 
-	// wsaBuf count가 0이면 WSASend() 10022 에러 발생
 	if (count <= 0)
 	{
 		InterlockedExchange(&session->sendPending_, 0);

@@ -585,7 +585,8 @@ void NetServer::WorkerFunc()
 				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
-					__debugbreak();
+					/// TODO: 수정
+					//__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}
@@ -765,6 +766,7 @@ void NetServer::SendFunc()
 // 
 // 10022 WSAEINVAL
 // wsasend()시 진행 중인 OVERLAPPED 재사용이거나 잘못된 WSABUF
+// WSASend() 호출 시 wsaBufcount가 0
 // 
 // 10035 WSAEWOULDBLOCK
 // L4 버퍼가 다 찼는데 논블로킹 소켓에서 send 호출시
