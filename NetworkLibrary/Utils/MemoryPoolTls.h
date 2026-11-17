@@ -34,11 +34,9 @@ private:
 	{
 		Node* top_ = nullptr;
 		int size_ = 0;
-
 		Node* freeHead_ = nullptr;
 		Node* freeTail_ = nullptr;
 		int freeSize_ = 0;
-
 		MemoryPoolTls<T>* poolTls_ = nullptr;
 
 	public:
@@ -90,7 +88,7 @@ private:
 			top_ = node->next_;
 			node->next_ = nullptr;
 
-			--size_;
+			size_--;
 
 			return &node->data_;
 		}
@@ -109,7 +107,7 @@ private:
 			{
 				node->next_ = top_;
 				top_ = node;
-				++size_;
+				size_++;
 
 				return true;
 			}
@@ -123,7 +121,7 @@ private:
 				freeTail_ = node;
 			}
 
-			++freeSize_;
+			freeSize_++;
 
 			// 일정량이 모이면 공용 저장소로 반환
 			if (freeSize_ >= CHUNK_SIZE)
@@ -144,7 +142,6 @@ private:
 
 	std::vector<MemoryPool*> pools_{};
 	std::vector<Chunk> chunks_{};
-
 	std::mutex lock_{};
 	int capacity_ = 0;
 
@@ -190,7 +187,7 @@ public:
 			}
 		}
 	}
-	
+
 	T* Alloc()
 	{
 		return LocalPool().Alloc();
@@ -211,7 +208,6 @@ private:
 	MemoryPool& LocalPool()
 	{
 		static thread_local MemoryPool pool{ this };
-
 		return pool;
 	}
 
@@ -225,7 +221,9 @@ private:
 			Node* node = new Node();
 
 			if (!head)
+			{
 				head = tail = node;
+			}
 			else
 			{
 				tail->next_ = node;
@@ -240,25 +238,27 @@ private:
 
 	void AllocChunk(Chunk& chunk)
 	{
-		lock_.lock();
-
-		// chunk가 있으면 획득
-		if (!chunks_.empty())
 		{
-			chunk = chunks_.back();
-			chunks_.pop_back();
-		}
+			std::lock_guard<std::mutex> lock(lock_);
 
-		lock_.unlock();
+			// chunk가 있으면 획득
+			if (!chunks_.empty())
+			{
+				chunk = chunks_.back();
+				chunks_.pop_back();
+			}
+		}
 
 		// chunk가 없으면 새로 생성
 		if (!chunk.head_)
+		{
 			chunk = CreateChunk();
+		}
 	}
 
 	void ReturnChunk(Chunk& chunk)
 	{
-		std::lock_guard<std::mutex> guard(lock_);
+		std::lock_guard<std::mutex> lock(lock_);
 
 		chunks_.push_back(chunk);
 	}

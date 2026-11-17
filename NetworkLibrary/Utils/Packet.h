@@ -29,7 +29,7 @@ struct NET_HEADER
 	unsigned char code_;
 	short size_;
 	unsigned char randKey_;
-	// 암호화 대상
+	// 인코딩 디코딩에 포함
 	unsigned char checksum_;
 };
 
@@ -64,7 +64,7 @@ struct MY_HEADER
 #pragma pack(pop)
 
 // HACK: 헤더 변경시 수정
-#define PACKET_CAPACITY				1000
+#define PACKET_CAPACITY				2000
 #define HEADER_CAPACITY				5
 
 class Packet;
@@ -100,7 +100,6 @@ public:
 	{
 		writePos_ = HEADER_CAPACITY;
 		readPos_ = HEADER_CAPACITY;
-
 		headerSize_ = headerSize;
 		isError_ = false;
 		isEncoding_ = false;
@@ -111,7 +110,6 @@ public:
 	{
 		writePos_ = HEADER_CAPACITY - headerSize;
 		readPos_ = HEADER_CAPACITY - headerSize;
-
 		headerSize_ = headerSize;
 		isError_ = false;
 		isEncoding_ = false;
@@ -187,30 +185,26 @@ public:
 		header->size_ = UseSize();
 		header->randKey_ = RAND(0, 255);
 
-		int sum = 0;
+		unsigned char checksum = 0;
 
 		for (int i = 0; i < UseSize(); i++)
 		{
-			sum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
+			checksum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
 		}
 
-		header->checksum_ = sum % 256;
+		header->checksum_ = checksum;
 	}
 
 	bool IsValidChecksum() const
 	{
 		NET_HEADER* header = reinterpret_cast<NET_HEADER*>(GetHeaderPtr());
 
-		int sum = 0;
-
 		unsigned char checksum = 0;
 
 		for (int i = 0; i < UseSize(); i++)
 		{
-			sum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
+			checksum += *(reinterpret_cast<unsigned char*>(GetBodyPtr() + i));
 		}
-
-		checksum = sum % 256;
 
 		if (header->checksum_ != checksum)
 			return false;
@@ -295,7 +289,6 @@ public:
 	{
 		*reinterpret_cast<unsigned char*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(char);
-
 		return *this;
 	}
 
@@ -303,7 +296,6 @@ public:
 	{
 		*reinterpret_cast<unsigned char*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(unsigned char);
-
 		return *this;
 	}
 
@@ -311,7 +303,6 @@ public:
 	{
 		*reinterpret_cast<short*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(short);
-
 		return *this;
 	}
 
@@ -319,7 +310,6 @@ public:
 	{
 		*reinterpret_cast<unsigned short*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(unsigned short);
-
 		return *this;
 	}
 
@@ -327,7 +317,6 @@ public:
 	{
 		*reinterpret_cast<int*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(int);
-
 		return *this;
 	}
 
@@ -335,7 +324,6 @@ public:
 	{
 		*reinterpret_cast<unsigned int*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(unsigned int);
-
 		return *this;
 	}
 
@@ -343,7 +331,6 @@ public:
 	{
 		*reinterpret_cast<float*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(float);
-
 		return *this;
 	}
 
@@ -351,7 +338,6 @@ public:
 	{
 		*reinterpret_cast<int64_t*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(int64_t);
-
 		return *this;
 	}
 
@@ -359,7 +345,6 @@ public:
 	{
 		*reinterpret_cast<uint64_t*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(uint64_t);
-
 		return *this;
 	}
 
@@ -367,10 +352,8 @@ public:
 	{
 		*reinterpret_cast<double*>(buffer_ + writePos_) = value;
 		writePos_ += sizeof(double);
-
 		return *this;
 	}
-
 
 
 	Packet& operator >> (char& value)
@@ -378,7 +361,6 @@ public:
 		if (readPos_ + sizeof(char) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -393,7 +375,6 @@ public:
 		if (readPos_ + sizeof(unsigned char) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -408,7 +389,6 @@ public:
 		if (readPos_ + sizeof(short) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -423,7 +403,6 @@ public:
 		if (readPos_ + sizeof(unsigned short) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -438,7 +417,6 @@ public:
 		if (readPos_ + sizeof(int) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -453,7 +431,6 @@ public:
 		if (readPos_ + sizeof(unsigned int) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -468,7 +445,6 @@ public:
 		if (readPos_ + sizeof(float) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -483,7 +459,6 @@ public:
 		if (readPos_ + sizeof(int64_t) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -498,7 +473,6 @@ public:
 		if (readPos_ + sizeof(uint64_t) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -513,7 +487,6 @@ public:
 		if (readPos_ + sizeof(double) > writePos_)
 		{
 			isError_ = true;
-
 			return  *this;
 		}
 
@@ -527,7 +500,6 @@ public:
 	{
 		memcpy(buffer_ + writePos_, src, size);
 		writePos_ += size;
-
 		return size;
 	}
 
@@ -535,16 +507,12 @@ public:
 	{
 		if (size <= 0 || readPos_ + size > writePos_)
 		{
-			//__debugbreak();
-
 			isError_ = true;
-
 			return 0;
 		}
 
 		memcpy(dest, buffer_ + readPos_, size);
 		readPos_ += size;
-
 		return size;
 	}
 };

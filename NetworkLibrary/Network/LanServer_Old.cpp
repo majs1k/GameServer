@@ -445,3 +445,89 @@ void LanServer::ReleaseSession(Session* session)
 		AcceptPost(session);
 	}
 }
+
+//while (1)
+//{
+//	if (remainBytes < headerSize)
+//		break;
+
+//	/// 헤더 코드 확인
+//	unsigned char code = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->code_;
+
+//	if (code != NET_CODE)
+//	{
+//		LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id: 0x%016llx", session->sessionId_);
+//		ReleaseSession(session);
+//		return;
+//	}
+
+//	int bodySize = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
+
+//	if (bodySize < 0)
+//	{
+//		LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id: 0x%016llx", session->sessionId_);
+//		ReleaseSession(session);
+//		return;
+//	}
+
+//	if (remainBytes - headerSize < bodySize)
+//		break;
+
+//	if (!completeFirstLoop)
+//	{
+//		session->recvPacket_->MoveWritePos(headerSize + bodySize);
+//		session->recvPacket_->MoveReadPos(headerSize);
+
+//		/// 디코딩
+//		session->recvPacket_->Decoding();
+
+//		if (!session->recvPacket_->IsValidChecksum())
+//		{
+//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
+//			ReleaseSession(session);
+//			return;
+//		}
+
+//		processedBytes += (headerSize + bodySize);
+//		remainBytes = totalBytes - processedBytes;
+
+//		++recvMessageCount_;
+//		OnRecv(session->sessionId_, session->recvPacket_);
+
+//		completeFirstLoop = true;
+
+//		// 디버깅용
+//		//break;
+//	}
+//	else
+//	{
+//		Packet* packet = packetPool_.Alloc();
+//		packet->Clear(headerSize);
+
+//		packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, headerSize + bodySize);
+//		packet->MoveReadPos(headerSize);
+
+//		//if (packet->IsError())
+//		//	__debugbreak();
+
+//		/// 디코딩
+//		packet->Decoding();
+
+//		if (!packet->IsValidChecksum())
+//		{
+//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
+//			ReleaseSession(session);
+
+//			packet->Free();
+//			return;
+//		}
+
+//		processedBytes += (headerSize + bodySize);
+//		remainBytes = totalBytes - processedBytes;
+
+//		++recvMessageCount_;
+//		OnRecv(session->sessionId_, packet);
+
+//		packet->Free();
+//	}
+//}

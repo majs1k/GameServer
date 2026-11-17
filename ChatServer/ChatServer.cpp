@@ -62,12 +62,8 @@ void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	// 로직 스레드에서 패킷 처리
 	// IO 스레드에서 처리하도록 수정 x (컨텐츠에서 동기화 문제 발생 가능)
-
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, packet, CS_NETWORK_PACKET);
-
 	packet->AddRef();
 
 	messageQueue_.Enqueue(message);

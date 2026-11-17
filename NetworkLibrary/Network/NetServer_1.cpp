@@ -19,12 +19,12 @@ NetServer::Session::Session()
 	sendOverlapped_.type_ = IO_TYPE::SEND;
 	recvOverlapped_.type_ = IO_TYPE::RECV;
 
-	//recvPacket_ = packetPool_.Alloc();
+	recvPacket_ = packetPool_.Alloc();
 }
 
 NetServer::Session::~Session()
 {
-	//packetPool_.Free(recvPacket_);
+	packetPool_.Free(recvPacket_);
 }
 
 void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int port)
@@ -36,8 +36,8 @@ void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int por
 	ioCount_ = 1;
 	sendPending_ = false;
 
-	recvQueue_.Clear();
-	//recvPacket_->Clear(sizeof(NET_HEADER));
+	//recvQueue_.Clear();
+	recvPacket_->Clear(sizeof(NET_HEADER));
 }
 
 void NetServer::Session::Clear()
@@ -588,7 +588,7 @@ void NetServer::WorkerFunc()
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
 					/// TODO: ¼öÁ¤
-					//__debugbreak();
+					__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}

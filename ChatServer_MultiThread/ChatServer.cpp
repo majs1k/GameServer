@@ -76,18 +76,13 @@ void ChatServer_Multi::OnRecv(uint64_t sessionId, Packet* packet)
 		auto it = sessionIdToPlayer_.find(sessionId);
 
 		if (it == sessionIdToPlayer_.end())
-		{
 			return;
-		}
 
 		player = it->second;
 	}
 
 	Message* message = messagePool_.Alloc();
-	//Message* message = new Message();
-
 	message->Initialize(sessionId, packet, CS_NETWORK_PACKET);
-
 	packet->AddRef();
 
 	messageQueue_[player->mapId_].Enqueue(message);
