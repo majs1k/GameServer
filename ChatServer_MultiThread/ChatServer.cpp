@@ -30,7 +30,6 @@ void ChatServer_Multi::Player::Initialize(uint64_t sessionId)
 ChatServer_Multi::ChatServer_Multi()
 {
 	g_RpcProxy.serverProxy_ = this;
-	serverStub_ = this;
 
 	for (int i = 0; i < MAP_COUNT; i++)
 	{

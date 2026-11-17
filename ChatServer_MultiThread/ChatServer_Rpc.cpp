@@ -103,7 +103,7 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		LOG(L"not valid sector");
+		//LOG(L"not valid sector");
 
 		return false;
 	}
@@ -173,7 +173,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 
 	if (!player->isInitSector_)
 	{
-		LOG(L"not init sector");
+		//LOG(L"not init sector");
 
 		return false;
 	}

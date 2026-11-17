@@ -19,12 +19,8 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 
         *packet >> playerId >> loginId >> nickname >> sessionKey;
 
-        //if (packet->IsError())
-        //{
-        //    serverStub_->Disconnect(sessionId);
-
-        //    //LOG(L"packet iserror");
-        //}
+        if (packet->IsError())
+            return false;
 
         return CS_ReqLogin(sessionId, playerId, loginId, nickname, sessionKey);
     }
@@ -38,11 +34,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet >> status >> playerId;
 
         if (packet->IsError())
-        {
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L"packet iserror");
-        }
+            return false;
 
         return SC_ResLogin(sessionId, status, playerId);
     }
@@ -56,12 +48,8 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 
         *packet >> playerId >> sectorX >> sectorY;
 
-        //if (packet->IsError())
-        //{
-        //    serverStub_->Disconnect(sessionId);
-
-        //    //LOG(L"packet iserror");
-        //}
+        if (packet->IsError())
+            return false;
 
         return CS_ReqSectorMove(sessionId, playerId, sectorX, sectorY);
     }
@@ -76,11 +64,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet >> playerId >> sectorX >> sectorY;
 
         if (packet->IsError())
-        {
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L"packet iserror");
-        }
+            return false;
 
         return SC_ResSectorMove(sessionId, playerId, sectorX, sectorY);
     }
@@ -94,11 +78,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet >> playerId >> chat;
 
         if (packet->IsError())
-        {
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L"packet iserror");
-        }
+            return false;
 
         return CS_ReqChat(sessionId, playerId, chat);
     }
@@ -114,11 +94,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet >> playerId >> loginId >> nickname >> chat;
 
         if (packet->IsError())
-        {
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L"packet iserror");
-        }
+            return false;
 
         return SC_ResChat(sessionId, playerId, loginId, nickname, chat);
     }
@@ -130,11 +106,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet;
 
         if (packet->IsError())
-        {
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L"packet iserror");
-        }
+            return false;
 
         return CS_ReqHeartbeat(sessionId);
     }

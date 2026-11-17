@@ -14,7 +14,6 @@ int main()
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 
 	LOG_INIT("./Log", ELOG_MODE::ERROR_MODE);
-	Profiler::Start();
 	ChatServer_Multi server;
 
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);

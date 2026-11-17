@@ -52,8 +52,8 @@ private:
 		LockFreeQueue<Packet*> sendQueue_;
 		std::queue<Packet*> sendPostQueue_;
 
-		//RingBuffer recvQueue_{ RECV_SIZE };
-		Packet* recvPacket_;
+		RingBuffer recvQueue_{ RECV_SIZE };
+		//Packet* recvPacket_;
 
 		OverlappedEx sendOverlapped_;
 		OverlappedEx recvOverlapped_;

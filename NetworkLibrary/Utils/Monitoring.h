@@ -9,7 +9,6 @@ class Monitoring
 private:
 
 	PDH_HQUERY cpuQuery;
-
 	PDH_HCOUNTER privateMemory;
 	PDH_HCOUNTER workingSet;
 	PDH_HCOUNTER available;
@@ -23,13 +22,9 @@ public:
 		PdhOpenQuery(NULL, NULL, &cpuQuery);
 
 		// PDH 리소스 카운터 생성 (여러개 수집시 이를 여러개 생성)
-
 		PdhAddCounter(cpuQuery, L"\\Process(Test)\\Private Bytes", NULL, &privateMemory);
-
 		PdhAddCounter(cpuQuery, L"\\Process(Test)\\Working Set", NULL, &workingSet);
-
 		PdhAddCounter(cpuQuery, L"\\Memory\\Available MBytes", NULL, &available);
-
 		PdhAddCounter(cpuQuery, L"\\Memory\\Pool Nonpaged Bytes", NULL, &nonpage);
 
 		// 첫 갱신
@@ -48,7 +43,6 @@ public:
 	{
 		PDH_FMT_COUNTERVALUE counterVal;
 		PdhGetFormattedCounterValue(privateMemory, PDH_FMT_DOUBLE, NULL, &counterVal);
-
 		return counterVal.doubleValue / 1024.0f / 1024.0f;
 	}
 
@@ -56,7 +50,6 @@ public:
 	{
 		PDH_FMT_COUNTERVALUE counterVal;
 		PdhGetFormattedCounterValue(workingSet, PDH_FMT_DOUBLE, NULL, &counterVal);
-
 		return counterVal.doubleValue / 1024.0f / 1024.0f;
 	}
 
@@ -64,7 +57,6 @@ public:
 	{
 		PDH_FMT_COUNTERVALUE counterVal;
 		PdhGetFormattedCounterValue(available, PDH_FMT_DOUBLE, NULL, &counterVal);
-
 		return counterVal.doubleValue;
 	}
 
@@ -72,7 +64,6 @@ public:
 	{
 		PDH_FMT_COUNTERVALUE counterVal;
 		PdhGetFormattedCounterValue(nonpage, PDH_FMT_DOUBLE, NULL, &counterVal);
-
 		return counterVal.doubleValue / 1024.0f / 1024.0f;
 	}
 };
@@ -249,7 +240,6 @@ public:
 	float ProcessorTotal(void) { return _fProcessorTotal; }
 	float ProcessorUser(void) { return _fProcessorUser; }
 	float ProcessorKernel(void) { return _fProcessorKernel; }
-
 	float ProcessTotal(void) { return _fProcessTotal; }
 	float ProcessUser(void) { return _fProcessUser; }
 	float ProcessKernel(void) { return _fProcessKernel; }
@@ -259,9 +249,9 @@ private:
 	HANDLE _hProcess;
 	int _iNumberOfProcessors;
 
-	float    _fProcessorTotal;
-	float    _fProcessorUser;
-	float    _fProcessorKernel;
+	float _fProcessorTotal;
+	float _fProcessorUser;
+	float _fProcessorKernel;
 
 	float _fProcessTotal;
 	float _fProcessUser;
@@ -270,7 +260,6 @@ private:
 	ULARGE_INTEGER _ftProcessor_LastKernel;
 	ULARGE_INTEGER _ftProcessor_LastUser;
 	ULARGE_INTEGER _ftProcessor_LastIdle;
-
 	ULARGE_INTEGER _ftProcess_LastKernel;
 	ULARGE_INTEGER _ftProcess_LastUser;
 	ULARGE_INTEGER _ftProcess_LastTime;
@@ -298,16 +287,10 @@ private:
 //
 //		monitor.Update();
 //
-//
 //		wprintf(L"Private Memory : %.2f MB\n", monitor.PrivateMemoryMB());
-//
 //		wprintf(L"Working Set : %.2f MB\n", monitor.WorkingSetMB());
-//
 //		wprintf(L"Available : %.2f MB\n", monitor.AvailMemoryMB());
-//
-//		wprintf(L"Nonpaged : %.2f MB\n", monitor.NonpagedPoolMB());
-//
-//		wprintf(L"\n");
+//		wprintf(L"Nonpaged : %.2f MB\n\n", monitor.NonpagedPoolMB());
 //
 //		Sleep(1000);
 //	}

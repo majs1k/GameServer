@@ -2,12 +2,6 @@
 #include <windows.h>
 #include "Singleton.h"
 
-//#define MEMORY_OVERFLOW
-
-#ifdef	MEMORY_OVERFLOW
-#define new		MemoryOverflow::getInstance().new
-#endif
-
 class MemoryOverflow : Singleton <MemoryOverflow>
 {
 public:
@@ -21,10 +15,10 @@ public:
 			return nullptr;
 
 		DWORD pageSize = si.dwPageSize;
-
 		size_t dataPages = (size + 4 - 1 + pageSize) / pageSize;
 
 		char* base = (char*)VirtualAlloc(nullptr, (dataPages + 1) * pageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
 		if (!base)
 			return nullptr;
 
@@ -33,9 +27,7 @@ public:
 		VirtualAlloc(noaccessPtr, pageSize, MEM_COMMIT, PAGE_NOACCESS);
 
 		char* retPtr = noaccessPtr - size;
-
 		*((int*)retPtr - 1) = (unsigned int)base;
-
 		return retPtr;
 	}
 
@@ -58,3 +50,9 @@ public:
 		Free(ptr);
 	}
 };
+
+//#define MEMORY_OVERFLOW
+
+#ifdef	MEMORY_OVERFLOW
+#define new		MemoryOverflow::getInstance().new
+#endif

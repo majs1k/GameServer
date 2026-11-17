@@ -15,7 +15,7 @@
 #include "Singleton.h"
 #include <Windows.h>
 
-#define TARGET_FPS		  50
+#define TARGET_FPS				 50
 
 class TickController : public Singleton<TickController>
 {
@@ -65,7 +65,6 @@ public:
 	{
 		DWORD oldTime = curTime_;
 		curTime_ = timeGetTime();
-
 		deltaTime_ = curTime_ - oldTime;
 
 		int frameRunTime = curTime_ - frameStartTime_;
@@ -79,13 +78,11 @@ public:
 		}
 
 		frameStartTime_ += CLOCKS_PER_SEC / TARGET_FPS;
-
 		frameCount_++;
 
 		if (CLOCKS_PER_SEC <= curTime_ - fpsStartTime_)
 		{
 			fpsStartTime_ += CLOCKS_PER_SEC;
-
 			curFps_ = frameCount_;
 			frameCount_ = 0;
 		}

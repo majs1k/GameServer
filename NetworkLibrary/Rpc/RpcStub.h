@@ -6,10 +6,6 @@ class RpcStub
 {
 public:
 
-    NetServer* serverStub_;
-
-public:
-
     bool PacketProc(uint64_t sessionId, Packet* packet);
 
     virtual bool CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey);

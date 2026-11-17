@@ -101,10 +101,6 @@ class RpcStub
 {{
 public:
 
-    NetServer* serverStub_;
-
-public:
-
     bool PacketProc(uint64_t sessionId, Packet* packet);
 {0}
 }};
@@ -153,11 +149,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         *packet{2};
 
         if (packet->IsError())
-        {{
-            serverStub_->Disconnect(sessionId);
-
-            //LOG(L""packet iserror"");
-        }}
+            return false;
 
         return {4}(sessionId{5});
     }}";

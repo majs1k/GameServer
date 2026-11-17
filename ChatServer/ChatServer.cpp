@@ -27,7 +27,6 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 ChatServer::ChatServer()
 {
 	g_RpcProxy.serverProxy_ = this;
-	serverStub_ = this;
 	
 	logicThread_ = std::thread(LogicThread, this);
 	schedulerThread_ = std::thread(SchedulerThread, this);

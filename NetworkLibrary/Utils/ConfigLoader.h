@@ -21,7 +21,7 @@ struct ServerConfig
     std::string dbSchema;
 };
 
-extern ServerConfig config;
+inline ServerConfig config;
 
 class ConfigLoader : public Singleton<ConfigLoader>
 {
@@ -33,8 +33,8 @@ public:
 
         if (!ifs.is_open())
         {
-            printf("*** error config filename ***\n");
-            return false;
+            printf("file name error");
+            __debugbreak();
         }
 
         IStreamWrapper isw(ifs);
@@ -45,31 +45,20 @@ public:
         if (doc.HasParseError())
         {
             printf("config parse error\n");
-            return false;
+            __debugbreak();
         }
 
         config.ip = doc["IP"].GetString();
-
         config.port = doc["Port"].GetInt();
-
         config.sessionMax = doc["SessionMax"].GetInt();
-
         config.concurrentCount = doc["ConcurrentCount"].GetInt();
-
         config.workerCount = doc["WorkerCount"].GetInt();
 
-
-
         config.dbHost = doc["DBHost"].GetString();
-
         config.dbUser = doc["DBUser"].GetString();
-
         config.dbPassword = doc["DBPassword"].GetString();
-
         config.dbSchema = doc["DBSchema"].GetString();
 
         return true;
     }
 };
-
-ServerConfig config;

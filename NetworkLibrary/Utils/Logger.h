@@ -6,8 +6,6 @@
 #include <strsafe.h>
 #include <string>
 #include <unordered_map>
-
-#include "Singleton.h"
 #include <Windows.h>
 
 enum class ELOG
@@ -24,18 +22,12 @@ enum class ELOG_MODE
 	ERROR_MODE,
 };
 
-#define LOG(fileName, level, ...)             Logger::Instance().Log(fileName, level, __VA_ARGS__)
-#define LOG_INIT(directory, mode)               Logger::Instance().Initialize(directory, mode)
-
-
-class Logger : public Singleton<Logger>
+class Logger
 {
 private:
 
 	std::unordered_map<std::string, std::ofstream> logFiles_;
-
 	char directory_[MAX_PATH] = {};
-
 	std::mutex lock_;
 	ELOG_MODE mode_ = ELOG_MODE::DEBUG_MODE;
 
@@ -204,3 +196,8 @@ public:
 		}
 	}
 };
+
+inline Logger g_Logger;
+
+#define LOG(fileName, level, ...)				g_Logger.Log(fileName, level, __VA_ARGS__)
+#define LOG_INIT(directory, mode)				g_Logger.Initialize(directory, mode)

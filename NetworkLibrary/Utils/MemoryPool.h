@@ -29,8 +29,6 @@
 #include <iostream>
 #include <fstream>
 #include <list>
-
-#include <mutex>
 //#define DEBUG_MEMORYPOOL
 
 template <class T>
