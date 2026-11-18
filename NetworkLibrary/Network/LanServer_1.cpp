@@ -583,8 +583,7 @@ void LanServer::WorkerFunc()
 				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
-					/// TODO: 수정
-					//__debugbreak();
+					__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}
@@ -620,10 +619,8 @@ void LanServer::WorkerFunc()
 			}
 		}
 
-		/// TODO: 확인
-		IO_TYPE type = (reinterpret_cast<OverlappedEx*>(overlapped_))->type_;
+		IO_TYPE type = reinterpret_cast<OverlappedEx*>(overlapped_)->type_;
 
-		/// TODO: switch 문으로 변경?
 		if (type == IO_TYPE::RECV)
 		{
 			// 상대가 closesocket()시 (rst x) 발생

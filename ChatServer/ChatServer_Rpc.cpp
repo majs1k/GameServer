@@ -33,7 +33,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		alreadyLoginedPlayer->isLogin_ = false;
 		playerCount_--;
 
-		/// TODO: 반드시 여기서 삭제 -> 굳이?
+		/// 현재의 기존 로그인만 끊는 구조라면 반드시 여기서 삭제
 		playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
 		if (alreadyLoginedPlayer->isInitSector_)

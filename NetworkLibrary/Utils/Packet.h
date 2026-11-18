@@ -185,6 +185,7 @@ public:
 		header->size_ = UseSize();
 		header->randKey_ = RAND(0, 255);
 
+		// unsigned char 사용시 %가 필요 없음
 		unsigned char checksum = 0;
 
 		for (int i = 0; i < UseSize(); i++)
@@ -366,7 +367,6 @@ public:
 
 		value = *reinterpret_cast<char*>(buffer_ + readPos_);
 		readPos_ += sizeof(char);
-
 		return *this;
 	}
 
@@ -380,7 +380,6 @@ public:
 
 		value = *reinterpret_cast<unsigned char*>(buffer_ + readPos_);
 		readPos_ += sizeof(unsigned char);
-
 		return *this;
 	}
 
@@ -394,7 +393,6 @@ public:
 
 		value = *reinterpret_cast<short*>(buffer_ + readPos_);
 		readPos_ += sizeof(short);
-
 		return *this;
 	}
 
@@ -408,7 +406,6 @@ public:
 
 		value = *reinterpret_cast<unsigned short*>(buffer_ + readPos_);
 		readPos_ += sizeof(unsigned short);
-
 		return *this;
 	}
 
@@ -422,7 +419,6 @@ public:
 
 		value = *reinterpret_cast<int*>(buffer_ + readPos_);
 		readPos_ += sizeof(int);
-
 		return *this;
 	}
 
@@ -436,7 +432,6 @@ public:
 
 		value = *reinterpret_cast<unsigned int*>(buffer_ + readPos_);
 		readPos_ += sizeof(unsigned int);
-
 		return *this;
 	}
 
@@ -450,7 +445,6 @@ public:
 
 		value = *reinterpret_cast<float*>(buffer_ + readPos_);
 		readPos_ += sizeof(float);
-
 		return *this;
 	}
 
@@ -464,7 +458,6 @@ public:
 
 		value = *reinterpret_cast<int64_t*>(buffer_ + readPos_);
 		readPos_ += sizeof(int64_t);
-
 		return *this;
 	}
 
@@ -478,7 +471,6 @@ public:
 
 		value = *reinterpret_cast<uint64_t*>(buffer_ + readPos_);
 		readPos_ += sizeof(uint64_t);
-
 		return *this;
 	}
 
@@ -492,7 +484,6 @@ public:
 
 		value = *reinterpret_cast<double*>(buffer_ + readPos_);
 		readPos_ += sizeof(double);
-
 		return *this;
 	}
 

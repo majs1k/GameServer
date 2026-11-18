@@ -28,7 +28,6 @@
 //alignas(64) uint64_t idx;
 
 
-
 template <typename T>
 class LockFreeQueue
 {
@@ -36,8 +35,8 @@ private:
 
 	using Node = LockFreeNode<T>;
 
-	static constexpr uint64_t PTR_MASK = 0x0000FFFFFFFFFFFF;
-	static constexpr uint64_t TAG_MASK = 0xFFFF000000000000;
+	constexpr static  uint64_t PTR_MASK = 0x0000FFFFFFFFFFFF;
+	constexpr static  uint64_t TAG_MASK = 0xFFFF000000000000;
 
 	static uint64_t MakeAddress(Node* node, uint64_t tag)
 	{
@@ -58,10 +57,7 @@ private:
 
 	uint64_t front_ = 0;
 	uint64_t rear_ = 0;
-
 	unsigned int size_ = 0;
-
-
 
 public:
 
@@ -198,30 +194,4 @@ public:
 	{
 		return size_;
 	}
-
-	//void Clear()
-	//{
-	//	uint64_t current = front_;
-	//	Node* node = GetPtr(current);
-
-	//	// 현재 더미 노드부터 연결된 노드를 순회하며 해제
-	//	while (1)
-	//	{
-	//		uint64_t next = node->next_;
-
-	//		if (next == 0)
-	//		{
-	//			front_ = rear_ = current;
-	//			break;
-	//		}
-
-	//		//delete node;
-	//		pool_<T>.Free(node);
-
-	//		current = next;
-	//		node = GetPtr(next);
-	//	}
-
-	//	size_ = 0;
-	//}
 };

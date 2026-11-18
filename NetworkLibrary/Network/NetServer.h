@@ -53,8 +53,8 @@ private:
 		LockFreeQueue<Packet*> sendQueue_;
 		std::queue<Packet*> sendPostQueue_;
 
-		//RingBuffer recvQueue_{ RECV_SIZE };
-		Packet* recvPacket_;
+		RingBuffer recvQueue_{ RECV_SIZE };
+		//Packet* recvPacket_;
 
 		OverlappedEx sendOverlapped_;
 		OverlappedEx recvOverlapped_;
@@ -111,10 +111,8 @@ private:
 
 	//std::unordered_map<__int64, Session*> sessionMap_;
 	//std::recursive_mutex sessionMapLock_;
-	/// TODO: 수정
-	//Session** sessions_;
-	Session* sessions_[20000];
-	//std::vector<Session*> sessions_;
+	//Session* sessions_[20000];
+	std::vector<Session*> sessions_;
 	LockFreeStack<int> sessionIndexPool_;
 	std::atomic<uint64_t> idSeed_ = 0;
 
@@ -193,6 +191,7 @@ private:
 	// ============================================================================
 public:
 
+	/// 로그 사용 시 동기화 문제 추적 안될 때 대체
 	//LockStack<int> debugIndexPool_;
 	//inline static std::atomic<int> testcount = 0;
 	//// playerId -> sessionId

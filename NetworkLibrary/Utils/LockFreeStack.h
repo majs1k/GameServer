@@ -31,8 +31,8 @@ private:
 
 	using Node = LockFreeNode<T>;
 
-	static constexpr uint64_t PTR_MASK = 0x0000FFFFFFFFFFFF;
-	static constexpr uint64_t TAG_MASK = 0xFFFF000000000000;
+	constexpr static  uint64_t PTR_MASK = 0x0000FFFFFFFFFFFF;
+	constexpr static  uint64_t TAG_MASK = 0xFFFF000000000000;
 
 	static uint64_t MakeAddress(Node* node, uint64_t tag)
 	{
@@ -52,7 +52,6 @@ private:
 private:
 
 	uint64_t top_ = 0;
-
 	LONG size_ = 0;
 
 
@@ -130,24 +129,5 @@ public:
 	int Size() const
 	{
 		return size_;
-	}
-
-	void Clear()
-	{
-		uint64_t current = top_;
-		Node* node = GetPtr(current);
-
-		while (node != nullptr)
-		{
-			uint64_t next = node->next_;
-
-			//delete node;
-			pool_<T>.Free(node);
-
-			node = GetPtr(next);
-		}
-
-		top_ = 0;
-		size_ = 0;
 	}
 };

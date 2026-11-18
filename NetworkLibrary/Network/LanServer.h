@@ -111,7 +111,6 @@ private:
 
 	//std::unordered_map<__int64, Session*> sessionMap_;
 	//std::recursive_mutex sessionMapLock_;
-	/// TODO: ¼öÁ¤
 	//Session** sessions_;
 	Session* sessions_[20000];
 	//std::vector<Session*> sessions_;

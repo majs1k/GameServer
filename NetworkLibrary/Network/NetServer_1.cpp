@@ -19,12 +19,12 @@ NetServer::Session::Session()
 	sendOverlapped_.type_ = IO_TYPE::SEND;
 	recvOverlapped_.type_ = IO_TYPE::RECV;
 
-	recvPacket_ = packetPool_.Alloc();
+	//recvPacket_ = packetPool_.Alloc();
 }
 
 NetServer::Session::~Session()
 {
-	packetPool_.Free(recvPacket_);
+	//packetPool_.Free(recvPacket_);
 }
 
 void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int port)
@@ -36,8 +36,11 @@ void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int por
 	ioCount_ = 1;
 	sendPending_ = false;
 
-	//recvQueue_.Clear();
-	recvPacket_->Clear(sizeof(NET_HEADER));
+	recvQueue_.Clear();
+	
+	//Packet* packet = packetPool_.Alloc();
+	//packet->Clear(sizeof(NET_HEADER));
+	//recvPacket_ = packet;
 }
 
 void NetServer::Session::Clear()
@@ -216,16 +219,15 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 		sessionIndexPool_.Push(sessionMax_ - i - 1);
 	}
 
-	for (int i = 0; i < sessionMax_; i++)
-	{
-		sessions_[i] = new Session();
-	}
-
 	//for (int i = 0; i < sessionMax_; i++)
 	//{
-	//	Session* session = new Session();
-	//	sessions_.push_back(session);
+	//	sessions_[i] = new Session();
 	//}
+
+	for (int i = 0; i < sessionMax_; i++)
+	{
+		sessions_.push_back(new Session());
+	}
 
 	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
@@ -271,9 +273,14 @@ void NetServer::Stop()
 		delete sessions_[i];
 	}
 
-	//sessions_.clear();
+	while(1)
+	{
+		int index;
+		bool ret = sessionIndexPool_.Pop(index);
 
-	//sessionIndex_.Clear();
+		if (ret == false)
+			break;
+	}
 
 	// IOCP 삭제
 	CloseHandle(hNetworkIOCP_);
@@ -587,7 +594,6 @@ void NetServer::WorkerFunc()
 				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
-					/// TODO: 수정
 					__debugbreak();
 					ReleaseSession(session);
 					continue;
@@ -624,8 +630,8 @@ void NetServer::WorkerFunc()
 			}
 		}
 
-		/// TODO: 확인
-		IO_TYPE type = (reinterpret_cast<OverlappedEx*>(overlapped_))->type_;
+		// 문법상 캐스팅 후 멤버 접근
+		IO_TYPE type = reinterpret_cast<OverlappedEx*>(overlapped_)->type_;
 
 		/// TODO: switch 문으로 변경?
 		if (type == IO_TYPE::RECV)
