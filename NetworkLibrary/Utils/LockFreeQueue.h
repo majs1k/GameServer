@@ -3,30 +3,22 @@
 #include <Windows.h>
 
 #include "MemoryPoolTls.h"
-
 #include "LockFreeNode.h"
 
 //struct alignas(16) Log
 //{
 //	unsigned short front_ = 0;
-//
 //	unsigned short rear_ = 0;
-//
 //	unsigned short next_ = 0;
-//
 //	unsigned short node_ = 0;
-//
 //	unsigned short ret_ = 0;
-//
 //	unsigned short type_ = 0;
-//
 //	unsigned short threadId_ = 0;
 //};
 //
 //#define MAX_INDEX		1000000
 //Log logger[MAX_INDEX];
 //alignas(64) uint64_t idx;
-
 
 template <typename T>
 class LockFreeQueue
@@ -78,7 +70,6 @@ public:
 	{
 		//Node* node = new Node();
 		Node* node = pool_<T>.Alloc();
-
 		node->Initialize(value);
 
 		uint64_t nodeAddr;
@@ -90,15 +81,12 @@ public:
 		while (1)
 		{
 			uint64_t front = front_;
-
 			uint64_t rear = rear_;
-
 			uint64_t next = GetPtr(rear)->next_;
 
 			if (next == 0)
 			{
 				uint64_t newTag = GetTag(rear) + 1;
-
 				nodeAddr = MakeAddress(node, newTag);
 
 				//i = InterlockedIncrement(&idx) % MAX_INDEX;
@@ -112,8 +100,7 @@ public:
 
 				if (InterlockedCompareExchange64(reinterpret_cast<LONG64*>(&(GetPtr(rear)->next_)), nodeAddr, 0) == 0)
 				{
-					int64_t rr = InterlockedCompareExchange64(reinterpret_cast<LONG64*>(&rear_), nodeAddr, rear);
-
+					InterlockedCompareExchange64(reinterpret_cast<LONG64*>(&rear_), nodeAddr, rear);
 					break;
 				}
 			}
@@ -131,7 +118,6 @@ public:
 		if (size_ == 0)
 		{
 			//__debugbreak();
-
 			return false;
 		}
 
@@ -150,9 +136,7 @@ public:
 		{
 			front = front_;
 			rear = rear_;
-
 			frontPtr = GetPtr(front);
-
 			newTag = GetTag(front) + 1;
 			next = MakeAddress(GetPtr(frontPtr->next_), newTag);
 
@@ -163,9 +147,6 @@ public:
 
 			// 잘못된 코드 GetPtr(next)가 0인데도 else문 실행 가능
 			//if (GetPtr(frontPtr->next_) == 0)
-			//{
-			//	return false;
-			//}
 			if (GetPtr(next) == 0)
 			{
 				return false;
@@ -179,14 +160,12 @@ public:
 
 					//delete frontPtr;
 					pool_<T>.Free(frontPtr);
-
 					break;
 				}
 			}
 		}
 
 		InterlockedDecrement(&size_);
-
 		return true;
 	}
 

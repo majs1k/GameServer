@@ -96,7 +96,6 @@ private:
 	constexpr static int dx[3] = { 0, 1, -1 };
 	constexpr static int dy[3] = { 0, 1, -1 };
 
-	/// TODO: vector¿Í ºñ±³
 	std::list<Player*> sector_[SECTOR_HEIGHT][SECTOR_WIDTH];
 
 	// ===================================================================================== //
@@ -108,9 +107,9 @@ private:
 	void CreatePlayer(uint64_t sessionId);
 	void RemovePlayer(uint64_t sessionId);
 	void CheckTimeout();
-	void SS_CreatePlayer(uint64_t sessionId);
-	void SS_RemovePlayer(uint64_t sessionId);
-	void SS_CheckTimeout();
+	bool SS_CreatePlayer(uint64_t sessionId);
+	bool SS_RemovePlayer(uint64_t sessionId);
+	bool SS_CheckTimeout();
 
 	constexpr static int TIMEOUT_MS = 40'000;
 	std::atomic<int> procMessageCount_ = 0;

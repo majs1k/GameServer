@@ -140,10 +140,10 @@ public:
 		return buffer_ + HEADER_CAPACITY;
 	}
 
-	char* GetBufferPtr() const
-	{
-		return buffer_;
-	}
+	//char* GetBufferPtr() const
+	//{
+	//	return buffer_;
+	//}
 
 	char* GetFrontBufferPtr() const
 	{

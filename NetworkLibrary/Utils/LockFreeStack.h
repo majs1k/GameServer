@@ -3,26 +3,19 @@
 #include <Windows.h>
 
 #include "MemoryPoolTls.h"
-
 #include "LockFreeNode.h"
-
-
-//#define MAX_INDEX	1000000
 
 //struct alignas(16) Log
 //{
 //	unsigned short t_;
-//
 //	unsigned short tnext_;
-//
 //	unsigned short type_;
-//
 //	unsigned short threadId_;
 //};
-//
+// 
+//#define MAX_INDEX	1000000
 //Log logger[MAX_INDEX];
 //alignas(64) uint64_t idx;
-
 
 template <typename T>
 class LockFreeStack
@@ -54,7 +47,6 @@ private:
 	uint64_t top_ = 0;
 	LONG size_ = 0;
 
-
 public:
 
 	void Push(T value)
@@ -73,11 +65,9 @@ public:
 		do
 		{
 			top = top_;
-
 			node->next_ = top;
 
 			uint64_t newTag = GetTag(top) + 1;
-
 			nodeAddr = MakeAddress(node, newTag);
 
 			//i = InterlockedIncrement(&idx) % MAX_INDEX;
@@ -111,7 +101,6 @@ public:
 			topPtr = GetPtr(top);
 
 			uint64_t newTag = GetTag(top) + 1;
-
 			next = MakeAddress(GetPtr(topPtr->next_), newTag);
 
 		} while (InterlockedCompareExchange64(reinterpret_cast<LONG64*>(&top_), next, top) != top);
@@ -122,7 +111,6 @@ public:
 		pool_<T>.Free(topPtr);
 
 		InterlockedDecrement(&size_);
-
 		return true;
 	}
 

@@ -122,9 +122,9 @@ private:
 	void CreatePlayer(uint64_t sessionId);
 	void RemovePlayer(uint64_t sessionId);
 	void CheckTimeout();
-	void SS_CreatePlayer(uint64_t sessionId);
-	void SS_RemovePlayer(uint64_t sessionId);
-	void SS_CheckTimeout();
+	bool SS_CreatePlayer(uint64_t sessionId);
+	bool SS_RemovePlayer(uint64_t sessionId);
+	bool SS_CheckTimeout();
 
 	constexpr static int TIMEOUT_MS = 40'000;
 	std::atomic<int> procMessageCount_ = 0;
@@ -158,7 +158,7 @@ private:
 	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, 
 		LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
 
-	void SS_ReqLogin(uint64_t sessionId, Packet* packet);
-	void SS_ReqSectorMove(uint64_t sessionId, Packet* packet);
-	void SS_ReqChat(uint64_t sessionId, Packet* packet);
+	bool SS_ReqLogin(uint64_t sessionId, Packet* packet);
+	bool SS_ReqSectorMove(uint64_t sessionId, Packet* packet);
+	bool SS_ReqChat(uint64_t sessionId, Packet* packet);
 };

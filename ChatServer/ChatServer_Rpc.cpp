@@ -30,7 +30,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	{
 		Player* alreadyLoginedPlayer = it2->second;
 
-		/// TODO: 없애기??
+		/// TODO: 삭제
 		//alreadyLoginedPlayer->isLogin_ = false;
 
 		/// 더미가 기존 로그인만 끊는 구조라 반드시 여기서 삭제

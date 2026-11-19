@@ -375,20 +375,13 @@ void NetServer::SendPost(Session* session)
 	{
 		Packet* packet;
 
-		bool b = session->sendQueue_.Dequeue(packet);
-
-		/// TODO: 테스트
-		if (b == false)
-			__debugbreak();
+		session->sendQueue_.Dequeue(packet);
 
 		wsaBuf[i].buf = packet->GetHeaderPtr();
 		wsaBuf[i].len = packet->GetHeaderSize() + packet->UseSize();
 
 		session->sendPostQueue_.push(packet);
 	}
-
-	/// TODO: 테스트
-	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "SendPost() / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
 	InterlockedIncrement(&session->ioCount_);
 	int retval = WSASend(session->socket_, wsaBuf, count, nullptr, 0, (WSAOVERLAPPED*)&(session->sendOverlapped_), NULL);
@@ -457,12 +450,12 @@ void NetServer::ReleaseSession(Session* session)
 			return;
 
 		// 컨텐츠에 세션 종료를 알림
-		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 		OnRelease(session->sessionId_);
 		InterlockedDecrement(&sessionCount_);
 
 		/// accept 스레드 사용 시
 		closesocket(session->socket_);
+		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
 		session->Clear();
 		int index = GetSessionIndex(session->sessionId_);

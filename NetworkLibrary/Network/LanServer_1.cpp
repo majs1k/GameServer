@@ -365,7 +365,6 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 	/// 기존 방식
 	SendPost(session);
 
-	/// TODO: Send Thread 전달
 	//InterlockedIncrement(&session->ioCount_);
 	//PostQueuedCompletionStatus(hSendIOCP_, SEND_MESSAGE_NUM, (ULONG_PTR)session, (LPOVERLAPPED)SEND_MESSAGE_NUM);
 

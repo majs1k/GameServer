@@ -207,6 +207,8 @@ private:
 
 	MemoryPool& LocalPool()
 	{
+		// MemoryPoolTls 인스턴스마다 pool이 별개로 존재함
+		// 락프리 자료구조를 위해 LockFreeNode 추가 필요
 		static thread_local MemoryPool pool{ this };
 		return pool;
 	}

@@ -377,10 +377,6 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	/// 기존 방식
 	//SendPost(session);
 
-	/// test
-	Disconnect(sessionId);
-	return true;
-
 	/// TODO: Send Thread 전달
 	InterlockedIncrement(&session->ioCount_);
 	PostQueuedCompletionStatus(hSendIOCP_, PROTOCOL_SEND_PACKET, (ULONG_PTR)session, (LPOVERLAPPED)PROTOCOL_SEND_PACKET);

@@ -34,8 +34,14 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	{
 		Player* alreadyLoginedPlayer = it2->second;
 
-		alreadyLoginedPlayer->isLogin_ = false;
-		playerCount_--;
+		if (alreadyLoginedPlayer->mapId_ != tls_MapId_)
+		{
+			Message* message = messagePool_.Alloc();
+			CreatePkt_SS_ReqLogin(message, sessionId, playerId, loginId, nickname, sessionKey);
+
+			messageQueue_[alreadyLoginedPlayer->mapId_].Enqueue(message);
+			return true;
+		}
 
 		// 반드시 여기서 삭제
 		tls_PlayerMap_.erase({ alreadyLoginedPlayer->playerId_ });
@@ -84,13 +90,13 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id=%d", playerId);
 		return false;
 	}
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d", player->playerId_, sectorX, sectorY);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id=%d / sectorX=%d / secotrY=%d", player->playerId_, sectorX, sectorY);
 		return false;
 	}
 
@@ -150,14 +156,14 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 
 	if (!player->isInitSector_)
 	{
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id: %d", player->playerId_);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id=%d", player->playerId_);
 		return false;
 	}
 
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id: %d", playerId);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id=%d", playerId);
 		return false;
 	}
 

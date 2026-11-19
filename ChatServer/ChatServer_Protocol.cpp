@@ -11,46 +11,47 @@ void ChatServer::ProcessMessageQueue()
 		if (ret == false)
 			break;
 
-		procMessageCount_++;
-
 		uint64_t sessionId = message->sessionId_;
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
+		bool isSuccess;
+
+		procMessageCount_++;
 
 		switch (protocol)
 		{
 		case CS_NETWORK_PACKET:
 		{
 			messageCount_CS_NETWORK_PACKET_++;
-
-			if (!PacketProc(sessionId, packet))
-			{
-				Disconnect(sessionId);
-			}
-
+			isSuccess = PacketProc(sessionId, packet);
 			break;
 		}
 
 		case SS_CREATE_PLAYER:
 
 			messageCount_SS_CreatePlayer_++;
-			SS_CreatePlayer(sessionId);
+			isSuccess = SS_CreatePlayer(sessionId);
 			break;
 
 		case SS_REMOVE_PLAYER:
 
 			messageCount_SS_RemovePlayer_++;
-			SS_RemovePlayer(sessionId);
+			isSuccess = SS_RemovePlayer(sessionId);
 			break;
 
 		case SS_CHECK_TIMEOUT:
 
-			SS_CheckTimeout();
+			isSuccess = SS_CheckTimeout();
 			break;
 
 		default:
 
 			__debugbreak();
+		}
+
+		if (!isSuccess)
+		{
+			Disconnect(sessionId);
 		}
 
 		auto it = sessionIdToPlayer_.find(sessionId);
@@ -96,20 +97,21 @@ void ChatServer::CheckTimeout()
 }
 
 
-void ChatServer::SS_CreatePlayer(uint64_t sessionId)
+bool ChatServer::SS_CreatePlayer(uint64_t sessionId)
 {
 	Player* player = playerPool_.Alloc();
 	player->Initialize(sessionId);
 
 	sessionIdToPlayer_.insert({ player->sessionId_ , player });
+	return true;
 }
 
-void ChatServer::SS_RemovePlayer(uint64_t sessionId)
+bool ChatServer::SS_RemovePlayer(uint64_t sessionId)
 {
 	auto it = sessionIdToPlayer_.find(sessionId);
 
 	if (it == sessionIdToPlayer_.end())
-		return;
+		return false;
 
 	Player* player = it->second;
 
@@ -130,9 +132,10 @@ void ChatServer::SS_RemovePlayer(uint64_t sessionId)
 	// + 다른 플레이어들에게 퇴장 알림
 
 	playerPool_.Free(player);
+	return true;
 }
 
-void ChatServer::SS_CheckTimeout()
+bool ChatServer::SS_CheckTimeout()
 {
 	for (auto& pm : playerMap_)
 	{
@@ -145,4 +148,6 @@ void ChatServer::SS_CheckTimeout()
 			Disconnect(p->sessionId_);
 		}
 	}
+
+	return true;
 }
