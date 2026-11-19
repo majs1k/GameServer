@@ -51,6 +51,11 @@ void ChatServer_Multi::ProcessMessageQueue()
 			SS_CheckTimeout();
 			break;
 
+		case SS_LOGIN:
+
+			SS_ReqLogin(sessionId, packet);
+			break;
+
 		case SS_SECTOR_MOVE:
 
 			SS_ReqSectorMove(sessionId, packet);
@@ -192,12 +197,27 @@ void ChatServer_Multi::SS_CheckTimeout()
 	}
 }
 
+void ChatServer_Multi::CreatePkt_SS_ReqLogin(Message* message, uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+{
+	Packet* packet = packetPool_.Alloc();
+	packet->Initialize();
+
+	Pkt_Login* buffer = reinterpret_cast<Pkt_Login*>(packet->GetBodyPtr());
+
+	buffer->playerId_ = playerId;
+	buffer->loginId_ = loginId;
+	buffer->nickname_ = nickname;
+	buffer->sessionKey_ = sessionKey;
+
+	message->Initialize(sessionId, packet, SS_LOGIN);
+}
+
 void ChatServer_Multi::CreatePkt_SS_ReqSectorMove(Message* message, uint64_t sessionId, int64_t playerId, unsigned short sectorX, unsigned short sectorY)
 {
 	Packet* packet = packetPool_.Alloc();
 	packet->Initialize();
 
-	Pkt_SectorMove* buffer = reinterpret_cast<Pkt_SectorMove*>(packet->GetBufferPtr());
+	Pkt_SectorMove* buffer = reinterpret_cast<Pkt_SectorMove*>(packet->GetBodyPtr());
 
 	buffer->playerId_ = playerId;
 	buffer->sectorX_ = sectorX;
@@ -206,22 +226,45 @@ void ChatServer_Multi::CreatePkt_SS_ReqSectorMove(Message* message, uint64_t ses
 	message->Initialize(sessionId, packet, SS_SECTOR_MOVE);
 }
 
-void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY)
+void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, 
+	LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY)
 {
 	Packet* packet = packetPool_.Alloc();
 	packet->Initialize();
 
-	Pkt_Chat* buffer = reinterpret_cast<Pkt_Chat*>(packet->GetBufferPtr());
+	Pkt_Chat* buffer = reinterpret_cast<Pkt_Chat*>(packet->GetBodyPtr());
 
 	buffer->playerId_ = playerId;
 	buffer->loginId_ = loginId;
 	buffer->nickname_ = nickname;
+	// chat 배열 전체 복사
 	buffer->chat_ = chat;
 	buffer->sectorX_ = sectorX;
 	buffer->sectorY_ = sectorY;
 
 	message->Initialize(sessionId, packet, SS_CHAT);
 }
+
+
+
+void ChatServer_Multi::SS_ReqLogin(uint64_t sessionId, Packet* packet)
+{
+	Pkt_Login* pkt = reinterpret_cast<Pkt_Login*>(packet->GetBufferPtr());
+
+
+	buffer->playerId_ = playerId;
+	buffer->loginId_ = loginId;
+	buffer->nickname_ = nickname;
+	buffer->sessionKey_ = sessionKey;
+
+
+
+
+
+
+
+}
+
 
 void ChatServer_Multi::SS_ReqSectorMove(uint64_t sessionId, Packet* packet)
 {

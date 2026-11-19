@@ -194,9 +194,6 @@
     <ClCompile Include="Network\LanClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Database\Database.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Network\NetServer_1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

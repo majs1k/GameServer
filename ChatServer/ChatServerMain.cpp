@@ -11,7 +11,7 @@ int main()
 {
 	CrashDump().Initialize();
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
-	LOG_INIT("./Log", ELOG_MODE::NONE_MODE);
+	LOG_INIT("./Log", ELOG_MODE::ERROR_MODE);
 
 	ChatServer server;
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);

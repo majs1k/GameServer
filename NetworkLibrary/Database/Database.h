@@ -1,3 +1,12 @@
+// -------------------------------------------------------------------
+//
+// 데이터베이스
+//
+// mysql c++ connector 라이브러리
+// mysqlcppconn .lib .dll 필요
+// 서버에 mysql 설치시 MS visual 재배포판 설치 필수
+// 
+// -------------------------------------------------------------------
 #pragma once
 #pragma comment(lib, "mysqlcppconn.lib")
 
@@ -7,26 +16,93 @@
 #include <mysql_driver.h>
 #include <mysql_connection.h>
 #include <cppconn/connection.h>
-#include <cppconn/prepared_statement.h>
+#include <cppconn/statement.h>
 #include <cppconn/resultset.h>
 #include <cppconn/exception.h>
 
-
 class Database
 {
+	struct QueryResult
+	{
+		// 선언 순서 중요!
+		std::unique_ptr<sql::Statement> statement;
+		std::unique_ptr<sql::ResultSet> result;
+	};
+
 private:
 	sql::mysql::MySQL_Driver* driver_ = nullptr;
-	sql::Connection* connection_ = nullptr;
+	std::unique_ptr<sql::Connection> connection_;
 
 public:
-	Database();
-	~Database();
+	Database() = default;
 
-	bool Connect(std::string host, std::string user, std::string password, std::string schema);
+	~Database()
+	{
+		if (connection_)
+			connection_->close();
+	}
 
-	std::unique_ptr<sql::PreparedStatement> Prepare(const std::string& query);
+	bool Connect(const std::string& host, const std::string& user, const std::string& password, const std::string& schema)
+	{
+		try
+		{
+			driver_ = sql::mysql::get_mysql_driver_instance();
 
-	void BeginTransaction();
-	void Commit();
-	void Rollback();
+			connection_.reset(driver_->connect(host, user, password));
+
+			connection_->setSchema(schema);
+
+			return true;
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB Connect Error: " << e.what() << std::endl;
+
+			return false;
+		}
+	}
+
+	// INSERT, UPDATE, DELETE, CREATE 등의 쿼리 실행
+	bool Execute(const std::string& query)
+	{
+		try
+		{
+			std::unique_ptr<sql::Statement> statement(connection_->createStatement());
+
+			statement->execute(query);
+
+			return true;
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB Execute Error: " << e.what() << std::endl;
+
+			return false;
+		}
+	}
+
+	// SELECT 쿼리 실행
+	QueryResult ExecuteQuery(const std::string& query)
+	{
+		QueryResult queryResult;
+
+		try
+		{
+			queryResult.statement.reset(connection_->createStatement());
+
+			queryResult.result.reset(queryResult.statement->executeQuery(query));
+
+			return queryResult;
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << e.what() << std::endl;
+			return {};
+		}
+	}
+
+	bool IsConnected() const
+	{
+		return connection_ && connection_->isValid();
+	}
 };

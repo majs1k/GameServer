@@ -128,6 +128,8 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//WSAIoctl(listenSocket_, SIO_KEEPALIVE_VALS, &keepAliveVals, sizeof(keepAliveVals), nullptr, 0, &bytesReturned, nullptr, nullptr);
 
 	/// L4 송신버퍼 사이즈
+	// send 완료통지가 성공해야(ACK가 와야) 해당 소켓으로 다시 send 가능
+	// 페이지락 비용이 커널 복사 비용보다 클 수 있음?
 	//int sndBufSize = 0;
 	//setsockopt(listenSocket_, SOL_SOCKET, SO_SNDBUF, (const char*)(&sndBufSize), sizeof(sndBufSize));
 
@@ -211,7 +213,6 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//	/// AccceptEx 호출
 	//	AcceptPost(session);
 	//}
-
 
 	/// Accept Thread
 	for (int i = 0; i < sessionMax_; i++)
@@ -314,9 +315,9 @@ bool NetServer::Disconnect(uint64_t sessionId)
 
 	disconnectCountTotal_++;
 	shutdown(session->socket_, SD_BOTH);
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session disconn / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
-	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "disconnect / id: 0x%016llx", sessionId);
 	return true;
 }
 
@@ -374,11 +375,15 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	sendMessageCount_++;
 
 	/// 기존 방식
-	SendPost(session);
+	//SendPost(session);
+
+	/// test
+	Disconnect(sessionId);
+	return true;
 
 	/// TODO: Send Thread 전달
-	//InterlockedIncrement(&session->ioCount_);
-	//PostQueuedCompletionStatus(hSendIOCP_, SEND_MESSAGE_NUM, (ULONG_PTR)session, (LPOVERLAPPED)SEND_MESSAGE_NUM);
+	InterlockedIncrement(&session->ioCount_);
+	PostQueuedCompletionStatus(hSendIOCP_, PROTOCOL_SEND_PACKET, (ULONG_PTR)session, (LPOVERLAPPED)PROTOCOL_SEND_PACKET);
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -456,7 +461,8 @@ void NetServer::CompleteAccept(SOCKET socket)
 	session->Initialize(sessionId, ip, port);
 	session->socket_ = socket;
 
-	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", sessionId, ip.c_str(), port);
+	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", session->sessionId_, ip.c_str(), port);
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
 	CreateIoCompletionPort((HANDLE)socket, hNetworkIOCP_, (ULONG_PTR)session, 0);
 	OnAccept(session->sessionId_);
@@ -566,12 +572,9 @@ void NetServer::WorkerFunc()
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
 		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
-		//PRO(L"GQCS()");
-
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
 			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "IO Worker Thread Stop");
-
 			return;
 		}
 
@@ -590,26 +593,22 @@ void NetServer::WorkerFunc()
 					continue;
 				}
 
-				// 1236 내가 연결을 끊었을때 (closesocket)
-				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
+				// 1236 내가 연결을 끊었을때
+				// 세션 정리때 closesocket을 하므로 지금 구조에선 shutdown 호출시만 발생 가능
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
-					__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}
 
-				// 121 트래픽 많으면 네트워크 연결 끊어버림
-				// 리모트환경 테스트시 발생
-				// 트래픽 줄여서 다시 테스트
+				// 121 tcp 재전송 최대 횟수 초과시
 				if (error == ERROR_SEM_TIMEOUT)
 				{
-					__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}
 
-				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error: %d / id: 0x%016llx", error, session->sessionId_);
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
 				__debugbreak();
 				continue;
 			}
@@ -617,7 +616,9 @@ void NetServer::WorkerFunc()
 			else
 			{
 				if (error == WAIT_TIMEOUT)
-					continue;
+				{
+					__debugbreak();
+				}
 
 				// 735 CP 삭제시 스레드 종료
 				if (error == ERROR_ABANDONED_WAIT_0)
@@ -639,8 +640,7 @@ void NetServer::WorkerFunc()
 			// 상대가 closesocket()시 (rst x) 발생
 			if (numOfBytes == 0)
 			{
-				__debugbreak();
-
+				//__debugbreak();
 				ReleaseSession(session);
 			}
 			else
@@ -663,7 +663,6 @@ void NetServer::WorkerFunc()
 		//{
 		//	CompleteDisconnect(session);
 		//}
-
 		else
 		{
 			__debugbreak();
@@ -676,7 +675,6 @@ unsigned int __stdcall NetServer::SendThread(void* param)
 {
 	NetServer* server = (NetServer*)param;
 	server->SendFunc();
-
 	return 0;
 }
 
@@ -693,8 +691,6 @@ void NetServer::SendFunc()
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
 		BOOL ret = GetQueuedCompletionStatus(hSendIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
-
-		//PRO(L"GQCS()");
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
@@ -724,42 +720,24 @@ void NetServer::SendFunc()
 					continue;
 				}
 
-				// 1236 내가 연결을 끊었을때 (closesocket)
-				// 세션 정리때 소켓을 닫는 구조라 이 에러가 정상적인 상황에선 불가능
+				// 1236 내가 연결을 끊었을때
+				// 세션 정리때 closesocket을 하므로 지금 구조에선 shutdown 호출시만 발생 가능
 				if (error == ERROR_CONNECTION_ABORTED)
 				{
-					__debugbreak();
 					ReleaseSession(session);
 					continue;
 				}
 
-				// 121 트래픽 많으면 네트워크 연결 끊어버림
-				// 리모트환경 테스트시 발생
-				// 트래픽 줄여서 다시 테스트
+				// 121 tcp 재전송 최대 횟수 초과시
 				if (error == ERROR_SEM_TIMEOUT)
 				{
 					ReleaseSession(session);
 					continue;
 				}
 
-				LOG("NETWORK", ELOG::ERROR_LEVEL, "Send Thread GQCS() error: %d / id: 0x%016llx", error, session->sessionId_);
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
 				__debugbreak();
 				continue;
-			}
-			// 완료 패킷을 큐에서 제거 안함, 매개변수 값 의미 x
-			else
-			{
-				if (error == WAIT_TIMEOUT)
-					continue;
-
-				// 735 CP 삭제시 스레드 종료
-				if (error == ERROR_ABANDONED_WAIT_0)
-					return;
-
-				// GQCS 잘못 호출
-				// 이 상황 배제
-				__debugbreak();
-				return;
 			}
 		}
 	}

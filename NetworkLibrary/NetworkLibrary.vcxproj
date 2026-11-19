@@ -119,8 +119,9 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -188,7 +189,6 @@
     <ClInclude Include="Utils\TickController.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Database\Database.cpp" />
     <ClCompile Include="Network\LanClient.cpp" />
     <ClCompile Include="Network\LanServer_1.cpp" />
     <ClCompile Include="Network\LanServer_2.cpp" />

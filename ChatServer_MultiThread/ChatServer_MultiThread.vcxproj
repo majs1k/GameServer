@@ -119,7 +119,7 @@
       <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>

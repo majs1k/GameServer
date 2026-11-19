@@ -52,8 +52,9 @@ private:
 		SS_REMOVE_PLAYER = 2,
 		SS_CHECK_TIMEOUT = 3,
 
-		SS_SECTOR_MOVE = 4,
-		SS_CHAT = 5,
+		SS_LOGIN = 4,
+		SS_SECTOR_MOVE = 5,
+		SS_CHAT = 6,
 	};
 
 public:
@@ -152,8 +153,12 @@ private:
 	int SectorToMapX(unsigned short x);
 	int SectorToMapY(unsigned short y);
 
+	void CreatePkt_SS_ReqLogin(Message* message, uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey);
 	void CreatePkt_SS_ReqSectorMove(Message* message, uint64_t sessionId, int64_t playerId, unsigned short sectorX, unsigned short sectorY);
-	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
+	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, 
+		LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
+
+	void SS_ReqLogin(uint64_t sessionId, Packet* packet);
 	void SS_ReqSectorMove(uint64_t sessionId, Packet* packet);
 	void SS_ReqChat(uint64_t sessionId, Packet* packet);
 };

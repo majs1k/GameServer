@@ -96,6 +96,7 @@ private:
 	constexpr static int dx[3] = { 0, 1, -1 };
 	constexpr static int dy[3] = { 0, 1, -1 };
 
+	/// TODO: vector¿Í ºñ±³
 	std::list<Player*> sector_[SECTOR_HEIGHT][SECTOR_WIDTH];
 
 	// ===================================================================================== //

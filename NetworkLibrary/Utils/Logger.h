@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <mutex>
+#include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <strsafe.h>
@@ -30,6 +31,7 @@ private:
 	char directory_[MAX_PATH] = {};
 	std::mutex lock_;
 	ELOG_MODE mode_ = ELOG_MODE::DEBUG_MODE;
+	std::atomic<unsigned int> logSequence_ = 0;
 
 private:
 
@@ -164,8 +166,11 @@ public:
 
 		char finalMessage[1400] = {};
 
-		hr = StringCchPrintfA(finalMessage, _countof(finalMessage), "[%s] [%04d-%02d-%02d %02d:%02d:%02d / %s] %s\n", fileName,
-			st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, GetLevelString(level), userMessage);
+		hr = StringCchPrintfA(finalMessage, _countof(finalMessage),
+			"[%s] [%04d-%02d-%02d %02d:%02d:%02d / %s / 0x%08u] %s\n",
+			fileName, st.wYear, st.wMonth, st.wDay,
+			st.wHour, st.wMinute, st.wSecond,
+			GetLevelString(level), ++logSequence_, userMessage);
 
 		if (FAILED(hr))
 			return;

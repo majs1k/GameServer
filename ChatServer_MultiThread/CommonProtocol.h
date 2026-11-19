@@ -236,6 +236,13 @@ enum ELOGIN
 	SUCCESS = 1,
 };
 
+struct Pkt_Login
+{
+	int64_t playerId_;
+	LoginId loginId_;
+	Nickname nickname_;
+	SessionKey sessionKey_;
+};
 
 struct Pkt_SectorMove
 {

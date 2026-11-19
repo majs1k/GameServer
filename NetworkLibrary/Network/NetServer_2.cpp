@@ -7,28 +7,6 @@
 
 void NetServer::RecvPost(Session* session)
 {
-	/// TODO: 삭제
-	//ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
-
-	//WSABUF wsaBuf[2];
-	//DWORD flags = 0;
-	//int retval;
-
-	//wsaBuf[0].buf = session->recvQueue_.GetRearBufferPtr();
-	//wsaBuf[0].len = session->recvQueue_.DirectEnqueueSize();
-
-	//if (session->recvQueue_.FreeSize() == session->recvQueue_.DirectEnqueueSize())
-	//{
-	//	retval = WSARecv(session->socket_, wsaBuf, 1, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
-	//}
-	//else
-	//{
-	//	wsaBuf[1].buf = session->recvQueue_.GetBufferPtr();
-	//	wsaBuf[1].len = session->recvQueue_.FreeSize() - session->recvQueue_.DirectEnqueueSize();
-
-	//	retval = WSARecv(session->socket_, wsaBuf, 2, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
-	//}
-
 	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
@@ -55,7 +33,8 @@ void NetServer::RecvPost(Session* session)
 		if (error == ERROR_IO_PENDING)
 			return;
 
-		if (error == WSAECONNRESET || error == WSAESHUTDOWN)
+		// 10053 shutdown 시 알수 없는 이유로  매우 적은 확률로 이 에러가 발생
+		if (error == WSAECONNRESET || error == WSAESHUTDOWN || error == WSAECONNABORTED)
 		{
 			ReleaseSession(session);
 			return;
@@ -70,14 +49,7 @@ void NetServer::RecvPost(Session* session)
 			return;
 		}
 
-		// 정확한 원인은 모르나 내쪽에서 소켓 닫았을 확률 높은 것 같음
-		if (error == WSAECONNABORTED)
-		{
-			ReleaseSession(session);
-			return;
-		}
-
-		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSARecv() error: %d / id: 0x%016llx", error, session->sessionId_);
+		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSARecv() error=%d / id=0x%016llx", error, session->sessionId_);
 		__debugbreak();
 		ReleaseSession(session);
 	}
@@ -89,7 +61,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 	if (session->recvQueue_.IsFull())
 	{
-		LOG("NETWORK", ELOG::ERROR_LEVEL, "recvQ full / id: 0x%016llx", session->sessionId_);
+		//LOG("NETWORK", ELOG::ERROR_LEVEL, "recvQ full / id=0x%016llx", session->sessionId_);
 		ReleaseSession(session);
 		return;
 	}
@@ -109,16 +81,16 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		/// 헤더 코드 확인
 		if (header.code_ != NET_CODE)
 		{
-			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id: 0x%016llx", session->sessionId_);
+			//LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id=0x%016llx", session->sessionId_);
 			ReleaseSession(session);
 			return;
 		}
 
 		int bodySize = header.size_;
 
-		if (bodySize < 0)
+		if (bodySize < 0 || PACKET_MAX_SIZE < bodySize)
 		{
-			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id: 0x%016llx", session->sessionId_);
+			//LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id=0x%016llx", session->sessionId_);
 			ReleaseSession(session);
 			return;
 		}
@@ -141,7 +113,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 
 		if (!packet->IsValidChecksum())
 		{
-			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
+			//LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id=0x%016llx", session->sessionId_);
 			ReleaseSession(session);
 			packet->Free();
 			return;
@@ -199,7 +171,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //			return;
 //		}
 //
-//		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSARecv() error: %d / id: 0x%016llx", error, session->sessionId_);
+//		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSARecv() error=%d / id=0x%016llx", error, session->sessionId_);
 //		__debugbreak();
 //		ReleaseSession(session);
 //	}
@@ -233,7 +205,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //		if (code != NET_CODE)
 //		{
-//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id: 0x%016llx", session->sessionId_);
+//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id=0x%016llx", session->sessionId_);
 //			ReleaseSession(session);
 //			return;
 //		}
@@ -242,7 +214,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //		if (bodySize < 0)
 //		{
-//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id: 0x%016llx", session->sessionId_);
+//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id=0x%016llx", session->sessionId_);
 //			ReleaseSession(session);
 //			return;
 //		}
@@ -260,7 +232,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //			if (!session->recvPacket_->IsValidChecksum())
 //			{
-//				LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
+//				LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id=0x%016llx", session->sessionId_);
 //				ReleaseSession(session);
 //				return;
 //			}
@@ -289,7 +261,7 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //			if (!packet->IsValidChecksum())
 //			{
-//				LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
+//				LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id=0x%016llx", session->sessionId_);
 //				ReleaseSession(session);
 //
 //				packet->Free();
@@ -394,7 +366,6 @@ void NetServer::SendPost(Session* session)
 	if (count <= 0)
 	{
 		InterlockedExchange(&session->sendPending_, 0);
-
 		return;
 	}
 
@@ -404,13 +375,20 @@ void NetServer::SendPost(Session* session)
 	{
 		Packet* packet;
 
-		session->sendQueue_.Dequeue(packet);
+		bool b = session->sendQueue_.Dequeue(packet);
+
+		/// TODO: 테스트
+		if (b == false)
+			__debugbreak();
 
 		wsaBuf[i].buf = packet->GetHeaderPtr();
 		wsaBuf[i].len = packet->GetHeaderSize() + packet->UseSize();
 
 		session->sendPostQueue_.push(packet);
 	}
+
+	/// TODO: 테스트
+	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "SendPost() / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
 	InterlockedIncrement(&session->ioCount_);
 	int retval = WSASend(session->socket_, wsaBuf, count, nullptr, 0, (WSAOVERLAPPED*)&(session->sendOverlapped_), NULL);
@@ -422,7 +400,8 @@ void NetServer::SendPost(Session* session)
 		if (error == ERROR_IO_PENDING)
 			return;
 
-		if (error == WSAECONNRESET || error == WSAESHUTDOWN || error == WSAECONNABORTED)
+		// 10022 shutdown 시 알수 없는 이유로  매우 적은 확률로 이 에러가 발생
+		if (error == WSAECONNRESET  || error == WSAESHUTDOWN ||  error == WSAECONNABORTED || error == WSAEINVAL)
 		{
 			ReleaseSession(session);
 			return;
@@ -437,7 +416,7 @@ void NetServer::SendPost(Session* session)
 			return;
 		}
 
-		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSARecv() error: %d / id: 0x%016llx", error, session->sessionId_);
+		LOG("NETWORK", ELOG::ERROR_LEVEL, "WSASend() error=%d / id=0x%016llx", error, session->sessionId_);
 		__debugbreak();
 		ReleaseSession(session);
 		return;
@@ -453,8 +432,6 @@ void NetServer::CompleteSend(Session* session, int numOfBytes)
 
 		Packet* packet = session->sendPostQueue_.front();
 		session->sendPostQueue_.pop();
-		//delete p;
-
 		packet->Free();
 	}
 
@@ -480,9 +457,9 @@ void NetServer::ReleaseSession(Session* session)
 			return;
 
 		// 컨텐츠에 세션 종료를 알림
+		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 		OnRelease(session->sessionId_);
 		InterlockedDecrement(&sessionCount_);
-		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session delete / id=0x%016llx", session->sessionId_);
 
 		/// accept 스레드 사용 시
 		closesocket(session->socket_);
@@ -490,7 +467,6 @@ void NetServer::ReleaseSession(Session* session)
 		session->Clear();
 		int index = GetSessionIndex(session->sessionId_);
 		sessionIndexPool_.Push(index);
-
 
 		/// AcceptEx() 사용 시
 		//ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
@@ -504,7 +480,7 @@ void NetServer::ReleaseSession(Session* session)
 		//	if (error == ERROR_IO_PENDING)
 		//		return;
 		//	
-		//	LOG("NETWORK", ELOG::ERROR_LEVEL, "DisconnectEx error: %d / id: 0x%016llx", error, session->sessionId_);
+		//	LOG("NETWORK", ELOG::ERROR_LEVEL, "DisconnectEx error=%d / id=0x%016llx", error, session->sessionId_);
 		//	__debugbreak();
 		//}
 	}
@@ -514,9 +490,7 @@ void NetServer::ReleaseSession(Session* session)
 uint64_t NetServer::AllocSessionId(Session* session)
 {
 	uint64_t index = session->sessionId_ >> SESSION_INDEX_SHIFT;
-
 	uint64_t id = ++idSeed_;
-
 	return id | (index << SESSION_INDEX_SHIFT);
 }
 

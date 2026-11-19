@@ -179,8 +179,8 @@ private:
 	HANDLE hSendIOCP_;
 	std::vector<HANDLE> hSendThread_;
 
-	constexpr static int SEND_CONCURRENT_COUNT = 3;
-	constexpr static int SEND_WORKER_COUNT = 3;
+	constexpr static int SEND_CONCURRENT_COUNT = 4;
+	constexpr static int SEND_WORKER_COUNT = 4;
 	constexpr static int PROTOCOL_SEND_PACKET = 1;
 
 	static unsigned int __stdcall SendThread(void* param);

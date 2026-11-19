@@ -64,8 +64,9 @@ struct MY_HEADER
 #pragma pack(pop)
 
 // HACK: 헤더 변경시 수정
-#define PACKET_CAPACITY				2000
+#define PACKET_CAPACITY				1000
 #define HEADER_CAPACITY				5
+#define PACKET_MAX_SIZE				500
 
 class Packet;
 
@@ -489,6 +490,11 @@ public:
 
 	int	Write(const char* src, int size)
 	{
+		if (size <= 0)
+		{
+			__debugbreak();
+		}
+
 		memcpy(buffer_ + writePos_, src, size);
 		writePos_ += size;
 		return size;

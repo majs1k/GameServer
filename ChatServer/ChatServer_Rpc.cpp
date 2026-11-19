@@ -2,6 +2,7 @@
 #include "RpcModule.h"
 #include "RPC/RpcProxy.h"
 #include "Utils/Logger.h"
+#include "Utils/Profiler.h"
 
 
 bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
@@ -30,10 +31,9 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 		Player* alreadyLoginedPlayer = it2->second;
 
 		/// TODO: 없애기??
-		alreadyLoginedPlayer->isLogin_ = false;
-		playerCount_--;
+		//alreadyLoginedPlayer->isLogin_ = false;
 
-		/// 현재의 기존 로그인만 끊는 구조라면 반드시 여기서 삭제
+		/// 더미가 기존 로그인만 끊는 구조라 반드시 여기서 삭제
 		playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
 		if (alreadyLoginedPlayer->isInitSector_)
@@ -43,7 +43,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 		dupLoginCountTotal_++;
 		Disconnect(alreadyLoginedPlayer->sessionId_);
-		LOG("CHATSERVER", ELOG::SYSTEM_LEVEL, "duplicate login / id: %d", playerId);
+		LOG("CHATSERVER", ELOG::SYSTEM_LEVEL, "duplicate login / id=%d", playerId);
 	}
 
 	// + 세션 키 인증
@@ -71,13 +71,13 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_sectormove id error / id: %d", playerId);
 		return false;
 	}
 
 	if (sectorX < 0 || sectorX >= SECTOR_WIDTH || sectorY < 0 || sectorY >= SECTOR_HEIGHT)
 	{
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id: %d / sectorX: %d / secotrY: %d", player->playerId_, sectorX, sectorY);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not valid sector / id=%d / sectorX=%d / secotrY=%d", player->playerId_, sectorX, sectorY);
 		return false;
 	}
 
@@ -120,18 +120,19 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	if (!player->isInitSector_)
 	{
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id: %d", player->playerId_);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "not init sector / id=%d", player->playerId_);
 		return false;
 	}
 
 	if (playerId != player->playerId_)
 	{
 		//__debugbreak();
-		LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id: %d", playerId);
+		//LOG("CHATSERVER", ELOG::ERROR_LEVEL, "req_chat id error / id=%d", playerId);
 		return false;
 	}
 
 	std::vector<uint64_t> sessionIds;
+	sessionIds.reserve(1000);
 
 	for (int i = 0; i < 3; i++)
 	{
