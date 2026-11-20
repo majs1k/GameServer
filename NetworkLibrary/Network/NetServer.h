@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <queue>
-//#include <unordered_map>
+#include <unordered_map>
 //#include <stack>
 //#include <mutex>
 #include <atomic>
@@ -104,6 +104,9 @@ private:
 	static unsigned int __stdcall WorkerThread(void* param);
 	void WorkerFunc();
 
+	constexpr static int PROTOCOL_SEND_PACKET = 1;
+
+
 	// ============================================================================
 	// Session
 	// ============================================================================
@@ -181,7 +184,6 @@ private:
 
 	constexpr static int SEND_CONCURRENT_COUNT = 4;
 	constexpr static int SEND_WORKER_COUNT = 4;
-	constexpr static int PROTOCOL_SEND_PACKET = 1;
 
 	static unsigned int __stdcall SendThread(void* param);
 	void SendFunc();
@@ -192,6 +194,9 @@ private:
 public:
 
 	/// 로그 사용 시 동기화 문제 추적 안될 때 대체
+	std::unordered_map<uint64_t, int> debuggingMap_;
+	std::mutex debuggingLock_;
+
 	//LockStack<int> debugIndexPool_;
 	//inline static std::atomic<int> testcount = 0;
 	//// playerId -> sessionId

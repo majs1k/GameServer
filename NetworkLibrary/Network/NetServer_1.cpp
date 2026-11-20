@@ -356,6 +356,15 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		packet->Encoding();
 	}
 
+
+	if (session->sendQueue_.Size() >= SEND_SIZE)
+	{
+		Disconnect(sessionId);
+		// 세션 보장용 카운트 감소
+		ReleaseSession(session);
+		return false;
+	}
+
 	/// char* 링버퍼 용도
 	//session->sendQueue_.Enqueue(packet->GetBufferPtr(), packet->TotalUseSize());
 	//delete packet;
@@ -364,22 +373,14 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	packet->AddRef();
 	session->sendQueue_.Enqueue(packet);
 
-	if (session->sendQueue_.Size() > SEND_SIZE)
-	{
-		Disconnect(sessionId);
-		// 세션 보장용 카운트 감소
-		ReleaseSession(session);
-		return false;
-	}
-
 	sendMessageCount_++;
 
 	/// 기존 방식
-	//SendPost(session);
+	SendPost(session);
 
 	/// TODO: Send Thread 전달
-	InterlockedIncrement(&session->ioCount_);
-	PostQueuedCompletionStatus(hSendIOCP_, PROTOCOL_SEND_PACKET, (ULONG_PTR)session, (LPOVERLAPPED)PROTOCOL_SEND_PACKET);
+	//InterlockedIncrement(&session->ioCount_);
+	//PostQueuedCompletionStatus(hNetworkIOCP_, PROTOCOL_SEND_PACKET, (ULONG_PTR)session, (LPOVERLAPPED)PROTOCOL_SEND_PACKET);
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -572,6 +573,14 @@ void NetServer::WorkerFunc()
 		{
 			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "IO Worker Thread Stop");
 			return;
+		}
+
+		/// TODO: 테스트
+		if (overlapped_ == (LPOVERLAPPED)PROTOCOL_SEND_PACKET && numOfBytes == PROTOCOL_SEND_PACKET)
+		{
+			SendPost(session);
+			ReleaseSession(session);
+			continue;
 		}
 
 		if (!ret)

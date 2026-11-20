@@ -1,26 +1,4 @@
 
-bool LanServer::Disconnect(uint64_t sessionId)
-{
-	sessionMapLock_.lock();
-
-	auto it = sessionMap_.find(sessionId);
-
-	if (it == sessionMap_.end())
-	{
-		sessionMapLock_.unlock();
-
-		return false;
-	}
-
-	Session* session = (*it).second;
-
-	sessionMapLock_.unlock();
-
-	closesocket(session->socket_);
-
-	return true;
-}
-
 bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 {
 	sessionMapLock_.lock();
@@ -40,14 +18,11 @@ bool LanServer::SendPacket(uint64_t sessionId, Packet* packet)
 
 	sessionMapLock_.unlock();
 
-
 	packet->SetTestHeader();
-
 
 	//session->sendQueue_.Enqueue(packet);
 	session->sendQueue_.Enqueue(packet->GetHeaderPtr(), packet->GetHeaderSize() + packet->UseSize());
 
-	/// 수정
 	delete packet;
 
 	InterlockedIncrement(&sendMessageCount_);
@@ -73,9 +48,7 @@ unsigned int __stdcall LanServer::AcceptThread(void* param)
 		if (clientSock == INVALID_SOCKET)
 		{
 			int error = WSAGetLastError();
-
-			wprintf(L"accept() error: %d", error);
-
+			printf("accept() error: %d", error);
 			continue;
 		}
 
@@ -119,61 +92,6 @@ unsigned int __stdcall LanServer::AcceptThread(void* param)
 	return 0;
 }
 
-void LanServer::RecvPost(Session* session)
-{
-	ZeroMemory(&session->recvOverlapped_.overlapped, sizeof(WSAOVERLAPPED));
-
-	WSABUF wsaBuf[2];
-
-	wsaBuf[0].buf = session->recvQueue_.GetRearBufferPtr();
-	wsaBuf[0].len = session->recvQueue_.DirectEnqueueSize();
-
-	DWORD flags = 0;
-	int retval;
-
-	if (session->recvQueue_.FreeSize() == session->recvQueue_.DirectEnqueueSize())
-	{
-		// buf 1개
-		retval = WSARecv(session->socket_, wsaBuf, 1, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
-	}
-	else
-	{
-		// buf 2개
-		wsaBuf[1].buf = session->recvQueue_.GetBufferPtr();
-		wsaBuf[1].len = session->recvQueue_.FreeSize() - session->recvQueue_.DirectEnqueueSize();
-
-		retval = WSARecv(session->socket_, wsaBuf, 2, nullptr, &flags, (WSAOVERLAPPED*)&session->recvOverlapped_, NULL);
-	}
-
-	if (retval == SOCKET_ERROR)
-	{
-		int error = WSAGetLastError();
-
-		if (error == ERROR_IO_PENDING)
-		{
-			//printf("recv() Direct IO\n");
-		}
-		else if (error == WSAECONNRESET || error == WSAECONNABORTED)
-		{
-			ReleaseSession(session);
-
-			return;
-		}
-		else
-		{
-			LOG(L"WSARecv() error: %d, iocount: %d", error, session->ioCount_);
-			//__debugbreak();
-			ReleaseSession(session);
-
-			return;
-		}
-	}
-	else
-	{
-		//printf("recv() Fast IO\n");
-	}
-}
-
 void LanServer::CompleteRecv(Session* session, int numOfBytes)
 {
 	session->recvQueue_.MoveRear(numOfBytes);
@@ -191,7 +109,6 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 			return;
 		}
 
-		///헤더 변경시 수정//////////////////////////////////////////////////////////////////////////////////////
 		if (useSize < sizeof(MY_HEADER))
 			break;
 
@@ -230,7 +147,6 @@ void LanServer::CompleteRecv(Session* session, int numOfBytes)
 
 	ReleaseSession(session);
 }
-
 
 void LanServer::SendPost(Session* session)
 {
@@ -336,198 +252,6 @@ void LanServer::ReleaseSession(Session* session)
 
 		delete session;
 
-		LOG_INFO(L"[NETWORK] session delete");
-
 		InterlockedDecrement(&sessionCount_);
 	}
 }
-
-
-unsigned int __stdcall LanServer::AcceptThread(void* param)
-{
-	LanServer* server = (LanServer*)param;
-
-	server->AcceptFunc();
-
-	return 0;
-}
-
-void LanServer::AcceptFunc()
-{
-	while (1)
-	{
-		SOCKET clientSock = accept(listenSocket_, nullptr, nullptr);
-		if (clientSock == INVALID_SOCKET)
-		{
-			int error = WSAGetLastError();
-
-			// 10038 WSAENOTSOCK
-			if (error == 10038)
-				break;
-
-			wprintf(L"accept() error: %d", error);
-
-			continue;
-		}
-
-		CompleteAccept(clientSock);
-	}
-}
-
-void LanServer::CompleteAccept(SOCKET socket)
-{
-	acceptCount_++;
-	acceptCountTotal_++;
-
-	SOCKADDR_IN clientAddr;
-	int len = sizeof(clientAddr);
-
-	getpeername(socket, (SOCKADDR*)&clientAddr, &len);
-
-	char str[16];
-	InetNtopA(AF_INET, &clientAddr.sin_addr, str, 16);
-	std::string ip = str;
-	int port = ntohs(clientAddr.sin_port);
-
-	// 허용되지 않은 ip와 port라면 바로 연결을 끊음
-	if (!OnConnectionRequest(ip, port))
-	{
-		closesocket(socket);
-
-		return;
-	}
-
-	//sessionMapLock_.lock();
-	//index = sessionIndex_.top();
-	//sessionIndex_.pop();
-	//sessionMapLock_.unlock();
-
-	int index;
-	sessionIndex_.Pop(index);
-
-	uint64_t sessionId = AllocSessionId(index);
-
-	Session* session = sessions[GetSessionIndex(sessionId)];
-
-	session->Initialize(socket, ip, port, sessionId);
-
-	InterlockedIncrement(&(sessionCount_));
-
-	//LOG_INFO(L"[NETWORK] session create ip=%S port=%d count=%d", ip.c_str(), port, server->sessionCount_);
-
-	CreateIoCompletionPort((HANDLE)socket, hIOCP_, (ULONG_PTR)session, 0);
-
-
-	OnAccept(session->sessionId_);
-
-	RecvPost(session);
-}
-
-
-void LanServer::ReleaseSession(Session* session)
-{
-	if (InterlockedDecrement(&session->ioCount_) == 0)
-	{
-		if (InterlockedCompareExchange(&session->ioCount_, 0x00010000, 0) != 0)
-			return;
-
-		//int index = GetSessionIndex(session->sessionId_);
-		//sessionIndex_.Push(index);
-		uint64_t sessionId = session->sessionId_;
-
-		//closesocket(session->socket_);
-
-		InterlockedDecrement(&sessionCount_);
-
-		OnRelease(sessionId);
-
-		/// 동일한 소켓으로 AcceptEx 재호출
-		AcceptPost(session);
-	}
-}
-
-//while (1)
-//{
-//	if (remainBytes < headerSize)
-//		break;
-
-//	/// 헤더 코드 확인
-//	unsigned char code = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->code_;
-
-//	if (code != NET_CODE)
-//	{
-//		LOG("NETWORK", ELOG::ERROR_LEVEL, "recv code error / id: 0x%016llx", session->sessionId_);
-//		ReleaseSession(session);
-//		return;
-//	}
-
-//	int bodySize = reinterpret_cast<NET_HEADER*>(session->recvPacket_->GetHeaderPtr() + processedBytes)->size_;
-
-//	if (bodySize < 0)
-//	{
-//		LOG("NETWORK", ELOG::ERROR_LEVEL, "recv body size error / id: 0x%016llx", session->sessionId_);
-//		ReleaseSession(session);
-//		return;
-//	}
-
-//	if (remainBytes - headerSize < bodySize)
-//		break;
-
-//	if (!completeFirstLoop)
-//	{
-//		session->recvPacket_->MoveWritePos(headerSize + bodySize);
-//		session->recvPacket_->MoveReadPos(headerSize);
-
-//		/// 디코딩
-//		session->recvPacket_->Decoding();
-
-//		if (!session->recvPacket_->IsValidChecksum())
-//		{
-//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
-//			ReleaseSession(session);
-//			return;
-//		}
-
-//		processedBytes += (headerSize + bodySize);
-//		remainBytes = totalBytes - processedBytes;
-
-//		++recvMessageCount_;
-//		OnRecv(session->sessionId_, session->recvPacket_);
-
-//		completeFirstLoop = true;
-
-//		// 디버깅용
-//		//break;
-//	}
-//	else
-//	{
-//		Packet* packet = packetPool_.Alloc();
-//		packet->Clear(headerSize);
-
-//		packet->Write(session->recvPacket_->GetHeaderPtr() + processedBytes, headerSize + bodySize);
-//		packet->MoveReadPos(headerSize);
-
-//		//if (packet->IsError())
-//		//	__debugbreak();
-
-//		/// 디코딩
-//		packet->Decoding();
-
-//		if (!packet->IsValidChecksum())
-//		{
-//			LOG("NETWORK", ELOG::ERROR_LEVEL, "recv checksum error / id: 0x%016llx", session->sessionId_);
-//			ReleaseSession(session);
-
-//			packet->Free();
-//			return;
-//		}
-
-//		processedBytes += (headerSize + bodySize);
-//		remainBytes = totalBytes - processedBytes;
-
-//		++recvMessageCount_;
-//		OnRecv(session->sessionId_, packet);
-
-//		packet->Free();
-//	}
-//}

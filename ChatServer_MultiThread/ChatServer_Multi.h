@@ -83,7 +83,7 @@ private:
 	void Monitoring();
 
 	constexpr static int MAP_COUNT = 4;
-	constexpr static int INITIAL_MAP_ID = 0;
+	constexpr static int INITIAL_MAP_ID = -1;
 	inline static thread_local int tls_MapId_;
 
 	std::thread logicThread_[MAP_COUNT];

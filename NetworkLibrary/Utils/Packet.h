@@ -72,8 +72,12 @@ class Packet;
 
 inline MemoryPoolTls<Packet> packetPool_;
 
+class NetServer;
 class Packet
 {
+	/// TODO: Å×½ºÆ®
+	friend class NetServer;
+
 private:
 
 	char* buffer_ = nullptr;

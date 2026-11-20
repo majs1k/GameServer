@@ -132,7 +132,6 @@
     <ClCompile Include="ChatServerMain.cpp" />
     <ClCompile Include="ChatServer_Protocol.cpp" />
     <ClCompile Include="ChatServer_Rpc.cpp" />
-    <ClCompile Include="main_dbtest.cpp" />
     <ClCompile Include="RpcModule.cpp" />
   </ItemGroup>
   <ItemGroup>

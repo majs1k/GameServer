@@ -26,7 +26,7 @@ void TestClient::SendTestNum()
 	static __int64 seed_;
 
 	Packet* packet2 = new Packet();
-	packet2->Initialize(5, 1);
+	packet2->Initialize(5);
 
 	*packet2 << seed_++;
 

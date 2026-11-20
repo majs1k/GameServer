@@ -350,7 +350,6 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //}
 
 
-
 #define MAX_WSABUF 100
 
 void NetServer::SendPost(Session* session)
@@ -441,13 +440,24 @@ void NetServer::CompleteSend(Session* session, int numOfBytes)
 	ReleaseSession(session);
 }
 
-
 void NetServer::ReleaseSession(Session* session)
 {
 	if (InterlockedDecrement(&session->ioCount_) == 0)
 	{
 		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_MASK, 0) != 0)
 			return;
+
+		/// µð¹ö±ë¿ë
+		//{
+		//	std::lock_guard<std::mutex> lock(debuggingLock_);
+
+		//	auto iter = debuggingMap_.find(session->sessionId_);
+
+		//	if (iter == debuggingMap_.end() || iter->second == 0)
+		//	{
+		//		__debugbreak();
+		//	}
+		//}
 
 		// ÄÁÅÙÃ÷¿¡ ¼¼¼Ç Á¾·á¸¦ ¾Ë¸²
 		OnRelease(session->sessionId_);

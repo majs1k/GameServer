@@ -289,9 +289,6 @@ bool ChatServer_Multi::SS_ReqLogin(uint64_t sessionId, Packet* packet)
 	{
 		Player* alreadyLoginedPlayer = it2->second;
 
-		alreadyLoginedPlayer->isLogin_ = false;
-		playerCount_--;
-
 		// 반드시 여기서 삭제
 		tls_PlayerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 

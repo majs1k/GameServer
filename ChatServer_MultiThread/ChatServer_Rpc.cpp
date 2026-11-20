@@ -61,9 +61,10 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	// + 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
-	playerCount_++;
 	/// 초기 맵에서 생성
 	tls_PlayerMap_.insert({ playerId, player });
+	// 로그인 성공 시 플레이어로 카운트
+	playerCount_++;
 
 	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
 	return true;

@@ -50,6 +50,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 	player->Initialize(playerId, loginId, nickname);
 	playerMap_.insert({ playerId, player });
+	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
 	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
@@ -157,6 +158,15 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 
 	/// packet 재활용
 	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
+
+	/// 디버깅용
+	if (chat.chat_[0] == L'=')
+	{
+		std::lock_guard<std::mutex> lock(debuggingLock_);
+
+		debuggingMap_[sessionId] = 1;
+	}
+
 	return true;
 }
 
