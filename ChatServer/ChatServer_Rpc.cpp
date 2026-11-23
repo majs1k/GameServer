@@ -30,9 +30,6 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	{
 		Player* alreadyLoginedPlayer = it2->second;
 
-		/// TODO: 삭제
-		//alreadyLoginedPlayer->isLogin_ = false;
-
 		/// 더미가 기존 로그인만 끊는 구조라 반드시 여기서 삭제
 		playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
@@ -159,13 +156,12 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	/// packet 재활용
 	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
 
-	/// 디버깅용
-	if (chat.chat_[0] == L'=')
-	{
-		std::lock_guard<std::mutex> lock(debuggingLock_);
-
-		debuggingMap_[sessionId] = 1;
-	}
+	/// 디버깅
+	//if (chat.chat_[0] == L'=')
+	//{
+	//	std::lock_guard<std::mutex> lock(debuggingLock_);
+	//	debuggingMap_[sessionId] = 1;
+	//}
 
 	return true;
 }

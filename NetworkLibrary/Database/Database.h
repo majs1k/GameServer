@@ -17,6 +17,7 @@
 #include <mysql_connection.h>
 #include <cppconn/connection.h>
 #include <cppconn/statement.h>
+#include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
 #include <cppconn/exception.h>
 
@@ -39,26 +40,38 @@ public:
 	~Database()
 	{
 		if (connection_)
+		{
 			connection_->close();
+		}
 	}
 
-	bool Connect(const std::string& host, const std::string& user, const std::string& password, const std::string& schema)
+	void Connect(const std::string& host, const std::string& user, const std::string& password, const std::string& schema)
 	{
 		try
 		{
+			/// 일반 모드
+			//driver_ = sql::mysql::get_mysql_driver_instance();
+			//connection_.reset(driver_->connect(host, user, password));
+			//connection_->setSchema(schema);
+
+			/// multi statement 모드
 			driver_ = sql::mysql::get_mysql_driver_instance();
+			sql::ConnectOptionsMap connectionProperties;
 
-			connection_.reset(driver_->connect(host, user, password));
+			connectionProperties["hostName"] = host;
+			connectionProperties["userName"] = user;
+			connectionProperties["password"] = password;
+			connectionProperties["schema"] = schema;
 
-			connection_->setSchema(schema);
+			// 여러 SQL 문장을 하나의 문자열로 실행 허용
+			connectionProperties["CLIENT_MULTI_STATEMENTS"] = true;
 
-			return true;
+			connection_.reset(driver_->connect(connectionProperties));
 		}
 		catch (sql::SQLException& e)
 		{
 			std::cout << "DB Connect Error: " << e.what() << std::endl;
-
-			return false;
+			__debugbreak();
 		}
 	}
 
@@ -70,14 +83,41 @@ public:
 			std::unique_ptr<sql::Statement> statement(connection_->createStatement());
 
 			statement->execute(query);
-
 			return true;
 		}
 		catch (sql::SQLException& e)
 		{
 			std::cout << "DB Execute Error: " << e.what() << std::endl;
-
 			return false;
+		}
+	}
+
+	void ExecuteMulti(const std::string& query)
+	{
+		try
+		{
+			std::unique_ptr<sql::Statement> statement(connection_->createStatement());
+
+			bool hasResult = statement->execute(query);
+
+			while (1)
+			{
+				if (hasResult)
+				{
+					std::unique_ptr<sql::ResultSet> result(statement->getResultSet());
+				}
+				else if (statement->getUpdateCount() == -1)
+				{
+					break;
+				}
+
+				hasResult = statement->getMoreResults();
+			}
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB ExecuteMulti Error: " << e.what() << std::endl;
+			__debugbreak();
 		}
 	}
 
@@ -98,6 +138,48 @@ public:
 		{
 			std::cout << e.what() << std::endl;
 			return {};
+		}
+	}
+
+	std::unique_ptr<sql::PreparedStatement> PrepareStatement(const std::string& query)
+	{
+		try
+		{
+			return std::unique_ptr<sql::PreparedStatement>(
+				connection_->prepareStatement(query)
+			);
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB PrepareStatement Error: " << e.what() << std::endl;
+			return nullptr;
+		}
+	}
+
+	void BeginTransaction()
+	{
+		try
+		{
+			connection_->setAutoCommit(false);
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB BeginTransaction Error: " << e.what() << std::endl;
+			__debugbreak();
+		}
+	}
+
+	void Commit()
+	{
+		try
+		{
+			connection_->commit();
+			connection_->setAutoCommit(true);
+		}
+		catch (sql::SQLException& e)
+		{
+			std::cout << "DB Commit Error: " << e.what() << std::endl;
+			__debugbreak();
 		}
 	}
 

@@ -137,7 +137,7 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	for (int i = 0; i < workerCount_; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, WorkerThread, this, 0, nullptr);
-		hWorkerThread_.push_back(hThread);
+		workerThread_.push_back(hThread);
 	}
 
 	/// send 스레드
@@ -247,7 +247,7 @@ void LanServer::Stop()
 		PostQueuedCompletionStatus(hNetworkIOCP_, 0, 0, nullptr);
 	}
 
-	WaitForMultipleObjects(workerCount_, hWorkerThread_.data(), TRUE, INFINITE);
+	WaitForMultipleObjects(workerCount_, workerThread_.data(), TRUE, INFINITE);
 
 	/// send thread 종료
 	for (int i = 0; i < SEND_WORKER_COUNT; i++)
@@ -257,7 +257,7 @@ void LanServer::Stop()
 
 	for (int i = 0; i < workerCount_; i++)
 	{
-		CloseHandle(hWorkerThread_[i]);
+		CloseHandle(workerThread_[i]);
 	}
 
 	// 세션맵 정리

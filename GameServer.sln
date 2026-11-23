@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ChatServer", "ChatServer\Ch
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ChatServer_MultiThread", "ChatServer_MultiThread\ChatServer_MultiThread.vcxproj", "{7524CC0A-D2ED-4E2D-A525-A209BDEEE728}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DBServer", "DBServer\DBServer.vcxproj", "{2DEA0D03-C399-49B5-86EF-93AD325C854B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +105,18 @@ Global
 		{7524CC0A-D2ED-4E2D-A525-A209BDEEE728}.Release|x64.Build.0 = Release|x64
 		{7524CC0A-D2ED-4E2D-A525-A209BDEEE728}.Release|x86.ActiveCfg = Release|Win32
 		{7524CC0A-D2ED-4E2D-A525-A209BDEEE728}.Release|x86.Build.0 = Release|Win32
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|Any CPU.Build.0 = Debug|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|x64.ActiveCfg = Debug|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|x64.Build.0 = Debug|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|x86.ActiveCfg = Debug|Win32
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Debug|x86.Build.0 = Debug|Win32
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|Any CPU.ActiveCfg = Release|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|Any CPU.Build.0 = Release|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x64.ActiveCfg = Release|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x64.Build.0 = Release|x64
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x86.ActiveCfg = Release|Win32
+		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -52,7 +52,6 @@ private:
 		SS_REMOVE_PLAYER = 2,
 		SS_CHECK_TIMEOUT = 3,
 
-		SS_LOGIN = 4,
 		SS_SECTOR_MOVE = 5,
 		SS_CHAT = 6,
 	};
@@ -83,7 +82,7 @@ private:
 	void Monitoring();
 
 	constexpr static int MAP_COUNT = 4;
-	constexpr static int INITIAL_MAP_ID = -1;
+	constexpr static int INITIAL_MAP_ID = 0;
 	inline static thread_local int tls_MapId_;
 
 	std::thread logicThread_[MAP_COUNT];
@@ -101,7 +100,8 @@ private:
 	MemoryPoolTls<Player> playerPool_;
 	std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
 	std::mutex sessionIdToPlayerLock_;
-	inline static thread_local std::unordered_map<int64_t, Player*> tls_PlayerMap_;
+	std::unordered_map<int64_t, Player*> playerMap_;
+	std::mutex playerMapLock_;
 	int playerCount_ = 0;
 
 	constexpr static int SECTOR_WIDTH = 50;
@@ -153,12 +153,10 @@ private:
 	int SectorToMapX(unsigned short x);
 	int SectorToMapY(unsigned short y);
 
-	void CreatePkt_SS_ReqLogin(Message* message, uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey);
 	void CreatePkt_SS_ReqSectorMove(Message* message, uint64_t sessionId, int64_t playerId, unsigned short sectorX, unsigned short sectorY);
-	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId, 
+	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId,
 		LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
 
-	bool SS_ReqLogin(uint64_t sessionId, Packet* packet);
 	bool SS_ReqSectorMove(uint64_t sessionId, Packet* packet);
 	bool SS_ReqChat(uint64_t sessionId, Packet* packet);
 };

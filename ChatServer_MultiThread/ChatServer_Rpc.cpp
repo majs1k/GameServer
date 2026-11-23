@@ -26,25 +26,39 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 		return true;
 	}
 
-	auto it2 = tls_PlayerMap_.find(playerId);
+	std::unordered_map<int64_t, Player*>::iterator it2;
+	std::unordered_map<int64_t, Player*>::iterator it3;
+
+	{
+		std::lock_guard<std::mutex> lock(playerMapLock_);
+
+		it2 = playerMap_.find(playerId);
+
+		it3 = playerMap_.end();
+	}
+
 
 	// 중복 접속 시 기존 접속만 종료
 	// 어택 x 더미를 로컬에서 같이 테스트시 발생 불가 (RST 유실 발생 안함)
-	if (it2 != tls_PlayerMap_.end())
+	if (it2 != it3)
 	{
 		Player* alreadyLoginedPlayer = it2->second;
 
-		if (alreadyLoginedPlayer->mapId_ != tls_MapId_)
+		//if (alreadyLoginedPlayer->mapId_ != tls_MapId_)
+		//{
+		//	Message* message = messagePool_.Alloc();
+		//	CreatePkt_SS_ReqLogin(message, sessionId, playerId, loginId, nickname, sessionKey);
+
+		//	messageQueue_[alreadyLoginedPlayer->mapId_].Enqueue(message);
+		//	return true;
+		//}
+
 		{
-			Message* message = messagePool_.Alloc();
-			CreatePkt_SS_ReqLogin(message, sessionId, playerId, loginId, nickname, sessionKey);
+			std::lock_guard<std::mutex> lock(playerMapLock_);
 
-			messageQueue_[alreadyLoginedPlayer->mapId_].Enqueue(message);
-			return true;
+			// 반드시 여기서 삭제
+			playerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 		}
-
-		// 반드시 여기서 삭제
-		tls_PlayerMap_.erase({ alreadyLoginedPlayer->playerId_ });
 
 		if (alreadyLoginedPlayer->isInitSector_)
 		{
@@ -61,8 +75,14 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	// + 세션 키 인증
 
 	player->Initialize(playerId, loginId, nickname);
-	/// 초기 맵에서 생성
-	tls_PlayerMap_.insert({ playerId, player });
+
+	{
+		std::lock_guard<std::mutex> lock(playerMapLock_);
+
+		/// 초기 맵에서 생성
+		playerMap_.insert({ playerId, player });
+	}
+
 	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
@@ -127,7 +147,7 @@ bool ChatServer_Multi::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, us
 	}
 	else
 	{
-		tls_PlayerMap_.erase(player->playerId_);
+		//playerMap_.erase(player->playerId_);
 
 		Message* message = messagePool_.Alloc();
 		CreatePkt_SS_ReqSectorMove(message, sessionId, playerId, sectorX, sectorY);

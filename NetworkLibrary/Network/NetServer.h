@@ -30,7 +30,6 @@ private:
 		SEND = 0,
 		RECV = 1,
 		ACCEPT = 2,
-		DISCONNECT = 3,
 	};
 
 	struct OverlappedEx
@@ -42,7 +41,6 @@ private:
 	struct Session
 	{
 		//OverlappedEx acceptOverlapped_;
-		//OverlappedEx disconnectOverlapped_;
 		SOCKET socket_;
 		uint64_t sessionId_;
 		std::string ip_;
@@ -96,7 +94,7 @@ private:
 	std::string serverIp_;
 	int serverPort_;
 	HANDLE hNetworkIOCP_;
-	std::vector<HANDLE> hWorkerThread_;
+	std::vector<HANDLE> workerThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;
@@ -114,7 +112,6 @@ private:
 
 	//std::unordered_map<__int64, Session*> sessionMap_;
 	//std::recursive_mutex sessionMapLock_;
-	//Session* sessions_[20000];
 	std::vector<Session*> sessions_;
 	LockFreeStack<int> sessionIndexPool_;
 	std::atomic<uint64_t> idSeed_ = 0;
@@ -129,7 +126,6 @@ protected:
 	LONG sessionCount_ = 0;
 	int sessionMax_;
 
-	uint64_t AllocSessionId(Session* session);
 	uint64_t GetSessionId(uint64_t sessionId);
 	int GetSessionIndex(uint64_t sessionId);
 
@@ -149,10 +145,9 @@ private:
 
 	void AcceptPost(Session* session);
 	void CompleteAccept(Session* session);
-	void CompleteDisconnect(Session* session);
 
 	LPFN_ACCEPTEX lpfnAcceptEx_;
-	LPFN_DISCONNECTEX lpfnDisconnectex_;
+	//LPFN_DISCONNECTEX lpfnDisconnectex_;
 
 	// ============================================================================
 	// Network
@@ -193,10 +188,11 @@ private:
 	// ============================================================================
 public:
 
-	/// 로그 사용 시 동기화 문제 추적 안될 때 대체
-	std::unordered_map<uint64_t, int> debuggingMap_;
-	std::mutex debuggingLock_;
+	/// 더미에서 attack 안 켰을때 연결 종료 전 = 메세지 도착으로 확인 가능
+	//std::unordered_map<uint64_t, int> debuggingMap_;
+	//std::mutex debuggingLock_;
 
+	/// 로그 사용 시 동기화 문제 추적 안될 때
 	//LockStack<int> debugIndexPool_;
 	//inline static std::atomic<int> testcount = 0;
 	//// playerId -> sessionId

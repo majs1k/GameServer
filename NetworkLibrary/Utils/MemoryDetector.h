@@ -74,7 +74,7 @@ public:
 		if (fp == nullptr)
 			return;
 
-		for (auto ai : list_)
+		for (auto& ai : list_)
 		{
 			fprintf(fp, "### LEAK [%p] [%d] %s : %d\n", ai->ptr, ai->size, ai->filename, ai->line);
 		}

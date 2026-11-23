@@ -447,54 +447,35 @@ void NetServer::ReleaseSession(Session* session)
 		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_MASK, 0) != 0)
 			return;
 
-		/// 디버깅용
+		/// 디버깅
 		//{
 		//	std::lock_guard<std::mutex> lock(debuggingLock_);
 
-		//	auto iter = debuggingMap_.find(session->sessionId_);
+		//	auto it = debuggingMap_.find(session->sessionId_);
 
-		//	if (iter == debuggingMap_.end() || iter->second == 0)
+		//	if (it == debuggingMap_.end())
 		//	{
 		//		__debugbreak();
 		//	}
+
+		//	debuggingMap_.erase(it);
 		//}
 
 		// 컨텐츠에 세션 종료를 알림
 		OnRelease(session->sessionId_);
+		session->Clear();
 		InterlockedDecrement(&sessionCount_);
-
+		//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
+		
 		/// accept 스레드 사용 시
 		closesocket(session->socket_);
-		LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
-		session->Clear();
 		int index = GetSessionIndex(session->sessionId_);
 		sessionIndexPool_.Push(index);
 
 		/// AcceptEx() 사용 시
-		//ZeroMemory(&session->disconnectOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
-
-		//BOOL ret = lpfnDisconnectex_(session->socket_, (OVERLAPPED*)&session->disconnectOverlapped_, TF_REUSE_SOCKET, 0);
-
-		//if (ret == FALSE)
-		//{
-		//	int error = WSAGetLastError();
-
-		//	if (error == ERROR_IO_PENDING)
-		//		return;
-		//	
-		//	LOG("NETWORK", ELOG::ERROR_LEVEL, "DisconnectEx error=%d / id=0x%016llx", error, session->sessionId_);
-		//	__debugbreak();
-		//}
+		//AcceptPost(session);
 	}
-}
-
-
-uint64_t NetServer::AllocSessionId(Session* session)
-{
-	uint64_t index = session->sessionId_ >> SESSION_INDEX_SHIFT;
-	uint64_t id = ++idSeed_;
-	return id | (index << SESSION_INDEX_SHIFT);
 }
 
 uint64_t NetServer::GetSessionId(uint64_t sessionId)
