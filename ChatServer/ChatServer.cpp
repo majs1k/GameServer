@@ -4,10 +4,10 @@
 #include "Utils/Profiler.h"
 
 
-void ChatServer::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname)
+void ChatServer::Player::Initialize(int64_t playerId, Email& email, Nickname& nickname)
 {
 	playerId_ = playerId;
-	loginId_ = loginId;
+	email_ = email;
 	nickname_ = nickname;
 	isLogin_ = true;
 	//isInitSector_ = false;
@@ -63,7 +63,7 @@ void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 	// 로직 스레드에서 패킷 처리
 	// IO 스레드에서 처리하도록 수정 x (컨텐츠에서 동기화 문제 발생 가능)
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET);
+	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_CHAT_SERVER);
 	packet->AddRef();
 
 	messageQueue_.Enqueue(message);
@@ -117,7 +117,7 @@ void ChatServer::Monitoring()
 	int messageCount_SS_RemovePlayer = messageCount_SS_RemovePlayer_.exchange(0);
 	int messageCount_NETWORK_PACKET = messageCount_CS_NETWORK_PACKET_.exchange(0);
 
-	int messageCount_CS_ReqLogin = messageCount_CS_ReqLogin_.exchange(0);
+	int messageCount_CS_ReqConnectChatServer = messageCount_CS_ReqConnectChatServer_.exchange(0);
 	int messageCount_CS_ReqSectorMove = messageCount_CS_ReqSectorMove_.exchange(0);
 	int messageCount_CS_ReqChat = messageCount_CS_ReqChat_.exchange(0);
 
@@ -134,7 +134,8 @@ void ChatServer::Monitoring()
 	printf("Timeout    : %d\n\n", timeoutCountTotal_.load());
 
 	printf("Accept TPS : %d\n", acceptCount);
-	printf("MessageQ   : %d\n\n", messageQueue_.Size());
+	printf("MessageQ   : %d\n", messageQueue_.Size());
+	printf("SendWork   : %d\n\n", sendWorkCount_.load());
 
 	printf("Update TPS : %d\n", procMessgaeCount);
 	printf("Recv   TPS : %d\n", recvMessageCount);
@@ -144,7 +145,7 @@ void ChatServer::Monitoring()
 	printf("Remove     : %d\n\n", messageCount_SS_RemovePlayer);
 
 	printf("Network    : %d\n", messageCount_NETWORK_PACKET);
-	printf("Login      : %d\n", messageCount_CS_ReqLogin);
+	printf("Connect    : %d\n", messageCount_CS_ReqConnectChatServer);
 	printf("Move       : %d\n", messageCount_CS_ReqSectorMove);
 	printf("Chat       : %d\n\n", messageCount_CS_ReqChat);
 

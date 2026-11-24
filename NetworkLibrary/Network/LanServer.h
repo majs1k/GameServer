@@ -95,8 +95,8 @@ private:
 	SOCKET listenSocket_;
 	std::string serverIp_;
 	int serverPort_;
-	HANDLE hNetworkIOCP_;
-	std::vector<HANDLE> workerThread_;
+	HANDLE recvCompletionPort_;
+	std::vector<HANDLE> recvThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;
@@ -177,8 +177,8 @@ protected:
 	// ============================================================================
 private:
 
-	HANDLE hSendIOCP_;
-	std::vector<HANDLE> hSendThread_;
+	HANDLE sendCompletionPort_;
+	std::vector<HANDLE> sendThreads_;
 
 	constexpr static int SEND_CONCURRENT_COUNT = 3;
 	constexpr static int SEND_WORKER_COUNT = 3;

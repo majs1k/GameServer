@@ -20,7 +20,7 @@ void ChatServer::ProcessMessageQueue()
 
 		switch (protocol)
 		{
-		case CS_NETWORK_PACKET:
+		case CS_NETWORK_PACKET_CHAT_SERVER:
 		{
 			messageCount_CS_NETWORK_PACKET_++;
 			isSuccess = PacketProc(sessionId, packet);
@@ -140,7 +140,7 @@ bool ChatServer::SS_CheckTimeout()
 	for (auto& pm : playerMap_)
 	{
 		Player* p = pm.second;
-		uint64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
+		int64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
 
 		if (timeDiff > TIMEOUT_MS)
 		{

@@ -129,24 +129,24 @@ bool LanServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//setsockopt(listenSocket_, SOL_SOCKET, SO_SNDBUF, (const char*)(&sndBufSize), sizeof(sndBufSize));
 
 
-	hNetworkIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
+	recvCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
 
 	/// 리슨소켓을 IOCP에 등록
-	CreateIoCompletionPort((HANDLE)listenSocket_, hNetworkIOCP_, (u_long)0, 0);
+	CreateIoCompletionPort((HANDLE)listenSocket_, recvCompletionPort_, (u_long)0, 0);
 
 	for (int i = 0; i < workerCount_; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, WorkerThread, this, 0, nullptr);
-		workerThread_.push_back(hThread);
+		recvThread_.push_back(hThread);
 	}
 
 	/// send 스레드
-	hSendIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, SEND_CONCURRENT_COUNT);
+	sendCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, SEND_CONCURRENT_COUNT);
 
 	for (int i = 0; i < SEND_WORKER_COUNT + 0; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, SendThread, this, 0, nullptr);
-		hSendThread_.push_back(hThread);
+		sendThreads_.push_back(hThread);
 	}
 
 	SOCKADDR_IN serverAddr;
@@ -244,20 +244,20 @@ void LanServer::Stop()
 	// worker thread 종료
 	for (int i = 0; i < workerCount_; i++)
 	{
-		PostQueuedCompletionStatus(hNetworkIOCP_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(recvCompletionPort_, 0, 0, nullptr);
 	}
 
-	WaitForMultipleObjects(workerCount_, workerThread_.data(), TRUE, INFINITE);
+	WaitForMultipleObjects(workerCount_, recvThread_.data(), TRUE, INFINITE);
 
 	/// send thread 종료
 	for (int i = 0; i < SEND_WORKER_COUNT; i++)
 	{
-		PostQueuedCompletionStatus(hSendIOCP_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(sendCompletionPort_, 0, 0, nullptr);
 	}
 
 	for (int i = 0; i < workerCount_; i++)
 	{
-		CloseHandle(workerThread_[i]);
+		CloseHandle(recvThread_[i]);
 	}
 
 	// 세션맵 정리
@@ -276,7 +276,7 @@ void LanServer::Stop()
 	//sessionIndex_.Clear();
 
 	// IOCP 삭제
-	CloseHandle(hNetworkIOCP_);
+	CloseHandle(recvCompletionPort_);
 
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "LanServer Stop");
 }
@@ -446,7 +446,7 @@ void LanServer::CompleteAccept(SOCKET socket)
 
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", sessionId, ip.c_str(), port);
 
-	CreateIoCompletionPort((HANDLE)socket, hNetworkIOCP_, (ULONG_PTR)session, 0);
+	CreateIoCompletionPort((HANDLE)socket, recvCompletionPort_, (ULONG_PTR)session, 0);
 	OnAccept(session->sessionId_);
 	RecvPost(session);
 }
@@ -552,7 +552,7 @@ void LanServer::WorkerFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(recvCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		//PRO(L"GQCS()");
 
@@ -678,7 +678,7 @@ void LanServer::SendFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hSendIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(sendCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		//PRO(L"GQCS()");
 

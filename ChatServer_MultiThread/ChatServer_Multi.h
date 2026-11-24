@@ -20,7 +20,7 @@ private:
 	{
 		uint64_t sessionId_;
 		int64_t playerId_;
-		LoginId loginId_;
+		Email email_;
 		Nickname nickname_;
 		bool isLogin_;
 		bool isInitSector_;
@@ -31,7 +31,7 @@ private:
 		/// Ãß°¡
 		int mapId_;
 
-		void Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname);
+		void Initialize(int64_t playerId, Email& email, Nickname& nickname);
 		void Initialize(uint64_t sessionId);
 	};
 
@@ -139,7 +139,7 @@ private:
 	// ===================================================================================== //
 private:
 
-	bool CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey) override;
+	bool CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey) override;
 	bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
 	bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 	bool CS_ReqHeartbeat(uint64_t sessionId) override;
@@ -155,7 +155,7 @@ private:
 
 	void CreatePkt_SS_ReqSectorMove(Message* message, uint64_t sessionId, int64_t playerId, unsigned short sectorX, unsigned short sectorY);
 	void CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId,
-		LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
+		Email email, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY);
 
 	bool SS_ReqSectorMove(uint64_t sessionId, Packet* packet);
 	bool SS_ReqChat(uint64_t sessionId, Packet* packet);

@@ -1,14 +1,18 @@
 
-CS_ReqLogin(int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)			1
+CS_ReqConnectChatServer(int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)		1
 	
-SC_ResLogin(byte status, int64_t playerId)															2
+SC_ResConnectChatServer(byte status, int64_t playerId)														2
 
-CS_ReqSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)									3
+CS_ReqSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)											3
 
-SC_ResSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)									4
+SC_ResSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)											4
 
-CS_ReqChat(int64_t playerId, Chat& chat)															5
+CS_ReqChat(int64_t playerId, Chat& chat)																	5
 
-SC_ResChat(int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)						6
+SC_ResChat(int64_t playerId, Email& email, Nickname& nickname, Chat& chat)								6
 
-CS_ReqHeartbeat()																					7
+CS_ReqHeartbeat()																							7
+
+CS_ReqLogin(int64_t userId, SessionKey& sessionKey)															101
+	
+SC_ResLogin(int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)	102

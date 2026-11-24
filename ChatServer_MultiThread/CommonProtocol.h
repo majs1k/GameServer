@@ -191,9 +191,9 @@ enum en_PACKET_TYPE
 //#pragma pack(pop)
 
 
-struct LoginId
+struct Email
 {
-	wchar_t loginId_[20];
+	wchar_t email_[20];
 };
 
 struct Nickname
@@ -236,14 +236,6 @@ enum ELOGIN
 	SUCCESS = 1,
 };
 
-struct Pkt_Login
-{
-	int64_t playerId_;
-	LoginId loginId_;
-	Nickname nickname_;
-	SessionKey sessionKey_;
-};
-
 struct Pkt_SectorMove
 {
 	int64_t playerId_;
@@ -254,9 +246,14 @@ struct Pkt_SectorMove
 struct Pkt_Chat
 {
 	int64_t playerId_;
-	LoginId loginId_;
+	Email email_;
 	Nickname nickname_;
 	Chat chat_;
 	unsigned short sectorX_;
 	unsigned short sectorY_;
+};
+
+struct IpAddress
+{
+	wchar_t ipAddress_[16];
 };

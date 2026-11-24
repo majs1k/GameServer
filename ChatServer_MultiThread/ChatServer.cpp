@@ -4,10 +4,10 @@
 #include "Utils/Profiler.h"
 
 
-void ChatServer_Multi::Player::Initialize(int64_t playerId, LoginId& loginId, Nickname& nickname)
+void ChatServer_Multi::Player::Initialize(int64_t playerId, Email& email, Nickname& nickname)
 {
 	playerId_ = playerId;
-	loginId_ = loginId;
+	email_ = email;
 	nickname_ = nickname;
 	isLogin_ = true;
 	//isInitSector_ = false;
@@ -138,7 +138,7 @@ void ChatServer_Multi::Monitoring()
 	int messageCount_SS_RemovePlayer = messageCount_SS_RemovePlayer_.exchange(0);
 	int messageCount_NETWORK_PACKET = messageCount_CS_NETWORK_PACKET_.exchange(0);
 
-	int messageCount_CS_ReqLogin = messageCount_CS_ReqLogin_.exchange(0);
+	int messageCount_CS_ReqConnectChatServer = messageCount_CS_ReqConnectChatServer_.exchange(0);
 	int messageCount_CS_ReqSectorMove = messageCount_CS_ReqSectorMove_.exchange(0);
 	int messageCount_CS_ReqChat = messageCount_CS_ReqChat_.exchange(0);
 
@@ -165,7 +165,7 @@ void ChatServer_Multi::Monitoring()
 	printf("Remove     : %d\n\n", messageCount_SS_RemovePlayer);
 
 	printf("Network    : %d\n", messageCount_NETWORK_PACKET);
-	printf("Login      : %d\n", messageCount_CS_ReqLogin);
+	printf("Connect    : %d\n", messageCount_CS_ReqConnectChatServer);
 	printf("Move       : %d\n", messageCount_CS_ReqSectorMove);
 	printf("Chat       : %d\n\n", messageCount_CS_ReqChat);
 

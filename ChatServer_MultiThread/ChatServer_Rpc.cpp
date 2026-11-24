@@ -4,7 +4,7 @@
 #include "Utils/Logger.h"
 
 
-bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+bool ChatServer_Multi::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
 	Player* player;
 
@@ -22,7 +22,7 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	// 이미 로그인 완료 시 실패 패킷만 보냄
 	if (player->isLogin_)
 	{
-		g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::FAIL, playerId);
+		g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::FAIL, playerId);
 		return true;
 	}
 
@@ -43,15 +43,6 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	if (it2 != it3)
 	{
 		Player* alreadyLoginedPlayer = it2->second;
-
-		//if (alreadyLoginedPlayer->mapId_ != tls_MapId_)
-		//{
-		//	Message* message = messagePool_.Alloc();
-		//	CreatePkt_SS_ReqLogin(message, sessionId, playerId, loginId, nickname, sessionKey);
-
-		//	messageQueue_[alreadyLoginedPlayer->mapId_].Enqueue(message);
-		//	return true;
-		//}
 
 		{
 			std::lock_guard<std::mutex> lock(playerMapLock_);
@@ -74,7 +65,7 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 
 	// + 세션 키 인증
 
-	player->Initialize(playerId, loginId, nickname);
+	player->Initialize(playerId, email, nickname);
 
 	{
 		std::lock_guard<std::mutex> lock(playerMapLock_);
@@ -86,7 +77,7 @@ bool ChatServer_Multi::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId
 	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
-	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
+	g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::SUCCESS, playerId);
 	return true;
 }
 
@@ -208,7 +199,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 				{
 					if (target->isLogin_)
 					{
-						//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
+						//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->email_, player->nickname_, chat);
 						sessionIds.push_back(target->sessionId_);
 					}
 				}
@@ -217,7 +208,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 			{
 				/// 다른 맵(스레드)로 메세지 전달
 				Message* message = messagePool_.Alloc();
-				CreatePkt_SS_ReqChat(message, sessionId, player->playerId_, player->loginId_, player->nickname_, chat, sectorNX, sectorNY);
+				CreatePkt_SS_ReqChat(message, sessionId, player->playerId_, player->email_, player->nickname_, chat, sectorNX, sectorNY);
 
 				messageQueue_[mapId].Enqueue(message);
 			}
@@ -225,7 +216,7 @@ bool ChatServer_Multi::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& ch
 	}
 
 	/// packet 재활용
-	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
+	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->email_, player->nickname_, chat);
 
 	return true;
 }

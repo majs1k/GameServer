@@ -23,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ChatServer_MultiThread", "C
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DBServer", "DBServer\DBServer.vcxproj", "{2DEA0D03-C399-49B5-86EF-93AD325C854B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LoginServer", "LoginServer\LoginServer.vcxproj", "{5C228EF6-5989-4500-B0D1-0B565ABC6617}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -117,6 +119,18 @@ Global
 		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x64.Build.0 = Release|x64
 		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x86.ActiveCfg = Release|Win32
 		{2DEA0D03-C399-49B5-86EF-93AD325C854B}.Release|x86.Build.0 = Release|Win32
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|Any CPU.Build.0 = Debug|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|x64.ActiveCfg = Debug|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|x64.Build.0 = Debug|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|x86.ActiveCfg = Debug|Win32
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Debug|x86.Build.0 = Debug|Win32
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|Any CPU.ActiveCfg = Release|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|Any CPU.Build.0 = Release|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|x64.ActiveCfg = Release|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|x64.Build.0 = Release|x64
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|x86.ActiveCfg = Release|Win32
+		{5C228EF6-5989-4500-B0D1-0B565ABC6617}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

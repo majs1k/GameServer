@@ -61,6 +61,8 @@ private:
 		//char acceptBuffer[100];
 		//std::recursive_mutex sessionLock_;
 
+		uint64_t lastRecvTime_;
+
 		Session();
 		~Session();
 
@@ -93,8 +95,8 @@ private:
 	SOCKET listenSocket_;
 	std::string serverIp_;
 	int serverPort_;
-	HANDLE hNetworkIOCP_;
-	std::vector<HANDLE> workerThread_;
+	HANDLE recvCompletionPort_;
+	std::vector<HANDLE> recvThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;
@@ -102,7 +104,7 @@ private:
 	static unsigned int __stdcall WorkerThread(void* param);
 	void WorkerFunc();
 
-	constexpr static int PROTOCOL_SEND_PACKET = 1;
+	//constexpr static int PROTOCOL_SEND_PACKET = 1;
 
 
 	// ============================================================================
@@ -128,6 +130,42 @@ protected:
 
 	uint64_t GetSessionId(uint64_t sessionId);
 	int GetSessionIndex(uint64_t sessionId);
+
+	constexpr static int TIMEOUT_MS = 40'000;
+
+	/// TODO: 수정중
+	void CheckTimeout()
+	{
+		for (auto& session : sessions_)
+		{
+			/// TODO: 별도 변수 분리?
+			if (session->ioCount_ == 0)
+				continue;
+
+			// 세션 보장용 카운트 증가
+			while (1)
+			{
+				int count = session->ioCount_;
+
+				if (count & RELEASE_MASK)
+					continue;
+
+				if (InterlockedCompareExchange(&session->ioCount_, count + 1, count) == count)
+					break;
+			}
+
+			int64_t timeDiff = GetTickCount64() - session->lastRecvTime_;
+
+			if (timeDiff > TIMEOUT_MS)
+			{
+				//timeoutCountTotal_++;
+				Disconnect(session->sessionId_);
+			}
+
+			ReleaseSession(session);
+		}
+	}
+
 
 	// ============================================================================
 	// Accept Thread
@@ -160,6 +198,23 @@ private:
 	void CompleteSend(Session* session, int numOfBytes);
 	void ReleaseSession(Session* session);
 
+	// ============================================================================
+	// Send Thread
+	// ============================================================================
+private:
+
+	HANDLE sendCompletionPort_;
+	std::vector<HANDLE> sendThreads_;
+
+	constexpr static int SEND_CONCURRENT_COUNT = 4;
+	constexpr static int SEND_WORKER_COUNT = 4;
+
+	static unsigned int __stdcall SendThread(void* param);
+	void SendFunc();
+
+	// ============================================================================
+	// Monitoring
+	// ============================================================================
 protected:
 
 	bool shutdown_ = false;
@@ -168,20 +223,7 @@ protected:
 	std::atomic<int> sendMessageCount_ = 0;
 	std::atomic<int> acceptCountTotal_ = 0;
 	std::atomic<int> disconnectCountTotal_ = 0;
-
-	// ============================================================================
-	// Send Thread
-	// ============================================================================
-private:
-
-	HANDLE hSendIOCP_;
-	std::vector<HANDLE> hSendThread_;
-
-	constexpr static int SEND_CONCURRENT_COUNT = 4;
-	constexpr static int SEND_WORKER_COUNT = 4;
-
-	static unsigned int __stdcall SendThread(void* param);
-	void SendFunc();
+	std::atomic<int> sendWorkCount_ = 0;
 
 	// ============================================================================
 	// Debugging

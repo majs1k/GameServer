@@ -197,7 +197,7 @@ bool ChatServer_Multi::SS_CheckTimeout()
 	for (auto& pm : map)
 	{
 		Player* p = pm.second;
-		uint64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
+		int64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
 
 		if (timeDiff > TIMEOUT_MS)
 		{
@@ -224,7 +224,7 @@ void ChatServer_Multi::CreatePkt_SS_ReqSectorMove(Message* message, uint64_t ses
 }
 
 void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId,
-	LoginId loginId, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY)
+	Email email, Nickname nickname, Chat& chat, unsigned short sectorX, unsigned short sectorY)
 {
 	Packet* packet = packetPool_.Alloc();
 	packet->Initialize();
@@ -232,7 +232,7 @@ void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId
 	Pkt_Chat* buffer = reinterpret_cast<Pkt_Chat*>(packet->GetBodyPtr());
 
 	buffer->playerId_ = playerId;
-	buffer->loginId_ = loginId;
+	buffer->email_ = email;
 	buffer->nickname_ = nickname;
 	// chat 배열 전체 복사
 	buffer->chat_ = chat;
@@ -291,12 +291,12 @@ bool ChatServer_Multi::SS_ReqChat(uint64_t sessionId, Packet* packet)
 	{
 		if (target->isLogin_)
 		{
-			//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
+			//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->email_, player->nickname_, chat);
 			sessionIds.push_back(target->sessionId_);
 		}
 	}
 
 	/// packet 재활용
-	g_RpcProxy.SC_ResChat(sessionIds, pkt->playerId_, pkt->loginId_, pkt->nickname_, pkt->chat_);
+	g_RpcProxy.SC_ResChat(sessionIds, pkt->playerId_, pkt->email_, pkt->nickname_, pkt->chat_);
 	return true;
 }

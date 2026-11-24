@@ -188,9 +188,9 @@ enum en_PACKET_TYPE
 //#pragma pack(pop)
 
 
-struct LoginId
+struct Email
 {
-	wchar_t loginId_[20];
+	wchar_t email_[20];
 };
 
 struct Nickname
@@ -231,4 +231,9 @@ enum ELOGIN
 {
 	FAIL = 0,
 	SUCCESS = 1,
+};
+
+struct IpAddress
+{
+	wchar_t ipAddress_[16];
 };

@@ -5,7 +5,7 @@
 #include "Utils/Profiler.h"
 
 
-bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+bool ChatServer::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
 	auto it = sessionIdToPlayer_.find(sessionId);
 
@@ -17,7 +17,7 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 	// 이미 로그인 완료 시 실패 패킷만 보냄
 	if (player->isLogin_)
 	{
-		g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::FAIL, playerId);
+		g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::FAIL, playerId);
 
 		return true;
 	}
@@ -45,12 +45,12 @@ bool ChatServer::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& logi
 
 	// + 세션 키 인증
 
-	player->Initialize(playerId, loginId, nickname);
+	player->Initialize(playerId, email, nickname);
 	playerMap_.insert({ playerId, player });
 	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
-	g_RpcProxy.SC_ResLogin(sessionId, ELOGIN::SUCCESS, playerId);
+	g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::SUCCESS, playerId);
 	return true;
 }
 
@@ -146,7 +146,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 			{
 				if (target->isLogin_)
 				{
-					//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->loginId_, player->nickname_, chat);
+					//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->email_, player->nickname_, chat);
 					sessionIds.push_back(target->sessionId_);
 				}
 			}
@@ -154,7 +154,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	}
 
 	/// packet 재활용
-	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->loginId_, player->nickname_, chat);
+	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->email_, player->nickname_, chat);
 
 	/// 디버깅
 	//if (chat.chat_[0] == L'=')

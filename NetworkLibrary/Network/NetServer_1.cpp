@@ -133,24 +133,24 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//setsockopt(listenSocket_, SOL_SOCKET, SO_SNDBUF, (const char*)(&sndBufSize), sizeof(sndBufSize));
 
 
-	hNetworkIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
+	recvCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
 
 	/// 리슨소켓을 IOCP에 등록
-	CreateIoCompletionPort((HANDLE)listenSocket_, hNetworkIOCP_, (u_long)0, 0);
+	CreateIoCompletionPort((HANDLE)listenSocket_, recvCompletionPort_, (u_long)0, 0);
 
 	for (int i = 0; i < workerCount_; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, WorkerThread, this, 0, nullptr);
-		workerThread_.push_back(hThread);
+		recvThread_.push_back(hThread);
 	}
 
 	/// send 스레드
-	hSendIOCP_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, SEND_CONCURRENT_COUNT);
+	sendCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, SEND_CONCURRENT_COUNT);
 
 	for (int i = 0; i < SEND_WORKER_COUNT + 0; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, SendThread, this, 0, nullptr);
-		hSendThread_.push_back(hThread);
+		sendThreads_.push_back(hThread);
 	}
 
 	SOCKADDR_IN serverAddr;
@@ -243,20 +243,20 @@ void NetServer::Stop()
 	// worker thread 종료
 	for (int i = 0; i < workerCount_; i++)
 	{
-		PostQueuedCompletionStatus(hNetworkIOCP_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(recvCompletionPort_, 0, 0, nullptr);
 	}
 
-	WaitForMultipleObjects(workerCount_, workerThread_.data(), TRUE, INFINITE);
+	WaitForMultipleObjects(workerCount_, recvThread_.data(), TRUE, INFINITE);
 
 	/// send thread 종료
 	for (int i = 0; i < SEND_WORKER_COUNT; i++)
 	{
-		PostQueuedCompletionStatus(hSendIOCP_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(sendCompletionPort_, 0, 0, nullptr);
 	}
 
 	for (int i = 0; i < workerCount_; i++)
 	{
-		CloseHandle(workerThread_[i]);
+		CloseHandle(recvThread_[i]);
 	}
 
 	// 세션맵 정리
@@ -280,7 +280,7 @@ void NetServer::Stop()
 	}
 
 	// IOCP 삭제
-	CloseHandle(hNetworkIOCP_);
+	CloseHandle(recvCompletionPort_);
 
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Stop");
 }
@@ -352,7 +352,6 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 		packet->Encoding();
 	}
 
-
 	if (session->sendQueue_.Size() >= SEND_SIZE)
 	{
 		Disconnect(sessionId);
@@ -375,8 +374,9 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	//SendPost(session);
 
 	/// TODO: Send Thread 전달
+	sendWorkCount_++;
 	InterlockedIncrement(&session->ioCount_);
-	PostQueuedCompletionStatus(hNetworkIOCP_, PROTOCOL_SEND_PACKET, (ULONG_PTR)session, (LPOVERLAPPED)PROTOCOL_SEND_PACKET);
+	PostQueuedCompletionStatus(sendCompletionPort_, 0, (ULONG_PTR)session, nullptr);
 
 	// 세션 보장용 카운트 감소
 	ReleaseSession(session);
@@ -456,7 +456,7 @@ void NetServer::CompleteAccept(SOCKET socket)
 	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", session->sessionId_, ip.c_str(), port);
 	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
-	CreateIoCompletionPort((HANDLE)socket, hNetworkIOCP_, (ULONG_PTR)session, 0);
+	CreateIoCompletionPort((HANDLE)socket, recvCompletionPort_, (ULONG_PTR)session, 0);
 	InterlockedIncrement(&sessionCount_);
 	OnAccept(session->sessionId_);
 	RecvPost(session);
@@ -544,7 +544,7 @@ void NetServer::WorkerFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hNetworkIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(recvCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
@@ -553,12 +553,12 @@ void NetServer::WorkerFunc()
 		}
 
 		/// TODO: 테스트
-		if (overlapped_ == (LPOVERLAPPED)PROTOCOL_SEND_PACKET && numOfBytes == PROTOCOL_SEND_PACKET)
-		{
-			SendPost(session);
-			ReleaseSession(session);
-			continue;
-		}
+		//if (overlapped_ == (LPOVERLAPPED)PROTOCOL_SEND_PACKET && numOfBytes == PROTOCOL_SEND_PACKET)
+		//{
+		//	SendPost(session);
+		//	ReleaseSession(session);
+		//	continue;
+		//}
 
 		if (!ret)
 		{
@@ -590,9 +590,8 @@ void NetServer::WorkerFunc()
 					continue;
 				}
 
-				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "recv thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
 				__debugbreak();
-				continue;
 			}
 			// 완료 패킷을 큐에서 제거 안함, 매개변수 값 의미 x
 			else
@@ -667,7 +666,7 @@ void NetServer::SendFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(hSendIOCP_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(sendCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
@@ -675,13 +674,7 @@ void NetServer::SendFunc()
 			return;
 		}
 
-		if (overlapped_ == (LPOVERLAPPED)PROTOCOL_SEND_PACKET && numOfBytes == PROTOCOL_SEND_PACKET)
-		{
-			SendPost(session);
-			ReleaseSession(session);
-			continue;
-		}
-
+		/// TODO: 주석처리 가능한지 확인
 		if (!ret)
 		{
 			int error = GetLastError();
@@ -712,11 +705,14 @@ void NetServer::SendFunc()
 					continue;
 				}
 
-				LOG("NETWORK", ELOG::ERROR_LEVEL, "IO Worker Thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
+				LOG("NETWORK", ELOG::ERROR_LEVEL, "send thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
 				__debugbreak();
-				continue;
 			}
 		}
+
+		sendWorkCount_--;
+		SendPost(session);
+		ReleaseSession(session);
 	}
 }
 

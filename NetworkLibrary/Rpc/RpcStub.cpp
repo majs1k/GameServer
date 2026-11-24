@@ -10,23 +10,23 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     {
     case 1:
     {
-        messageCount_CS_ReqLogin_++;
+        messageCount_CS_ReqConnectChatServer_++;
 
 		int64_t playerId;
-		LoginId loginId;
+		Email email;
 		Nickname nickname;
 		SessionKey sessionKey;
 
-        *packet >> playerId >> loginId >> nickname >> sessionKey;
+        *packet >> playerId >> email >> nickname >> sessionKey;
 
         if (packet->IsError())
             return false;
 
-        return CS_ReqLogin(sessionId, playerId, loginId, nickname, sessionKey);
+        return CS_ReqConnectChatServer(sessionId, playerId, email, nickname, sessionKey);
     }
     case 2:
     {
-        messageCount_SC_ResLogin_++;
+        messageCount_SC_ResConnectChatServer_++;
 
 		byte status;
 		int64_t playerId;
@@ -36,7 +36,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         if (packet->IsError())
             return false;
 
-        return SC_ResLogin(sessionId, status, playerId);
+        return SC_ResConnectChatServer(sessionId, status, playerId);
     }
     case 3:
     {
@@ -87,16 +87,16 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         messageCount_SC_ResChat_++;
 
 		int64_t playerId;
-		LoginId loginId;
+		Email email;
 		Nickname nickname;
 		Chat chat;
 
-        *packet >> playerId >> loginId >> nickname >> chat;
+        *packet >> playerId >> email >> nickname >> chat;
 
         if (packet->IsError())
             return false;
 
-        return SC_ResChat(sessionId, playerId, loginId, nickname, chat);
+        return SC_ResChat(sessionId, playerId, email, nickname, chat);
     }
     case 7:
     {
@@ -110,6 +110,41 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 
         return CS_ReqHeartbeat(sessionId);
     }
+    case 101:
+    {
+        messageCount_CS_ReqLogin_++;
+
+		int64_t userId;
+		SessionKey sessionKey;
+
+        *packet >> userId >> sessionKey;
+
+        if (packet->IsError())
+            return false;
+
+        return CS_ReqLogin(sessionId, userId, sessionKey);
+    }
+    case 102:
+    {
+        messageCount_SC_ResLogin_++;
+
+		int64_t userId;
+		byte status;
+		Email email;
+		Nickname nickname;
+		SessionKey sessionKey;
+		IpAddress gameServerIp;
+		ushort gameServerPort;
+		IpAddress chatServerIp;
+		ushort chatServerPort;
+
+        *packet >> userId >> status >> email >> nickname >> sessionKey >> gameServerIp >> gameServerPort >> chatServerIp >> chatServerPort;
+
+        if (packet->IsError())
+            return false;
+
+        return SC_ResLogin(sessionId, userId, status, email, nickname, sessionKey, gameServerIp, gameServerPort, chatServerIp, chatServerPort);
+    }
     default:
     {
         return false;
@@ -118,12 +153,12 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 }
 
 
-bool RpcStub::CS_ReqLogin(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, SessionKey& sessionKey)
+bool RpcStub::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
     return true;
 }
 
-bool RpcStub::SC_ResLogin(uint64_t sessionId, byte status, int64_t playerId)
+bool RpcStub::SC_ResConnectChatServer(uint64_t sessionId, byte status, int64_t playerId)
 {
     return true;
 }
@@ -143,12 +178,22 @@ bool RpcStub::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
     return true;
 }
 
-bool RpcStub::SC_ResChat(uint64_t sessionId, int64_t playerId, LoginId& loginId, Nickname& nickname, Chat& chat)
+bool RpcStub::SC_ResChat(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, Chat& chat)
 {
     return true;
 }
 
 bool RpcStub::CS_ReqHeartbeat(uint64_t sessionId)
+{
+    return true;
+}
+
+bool RpcStub::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessionKey)
+{
+    return true;
+}
+
+bool RpcStub::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
 {
     return true;
 }

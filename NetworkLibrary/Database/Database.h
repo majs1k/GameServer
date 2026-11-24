@@ -137,22 +137,8 @@ public:
 		catch (sql::SQLException& e)
 		{
 			std::cout << e.what() << std::endl;
+			__debugbreak();
 			return {};
-		}
-	}
-
-	std::unique_ptr<sql::PreparedStatement> PrepareStatement(const std::string& query)
-	{
-		try
-		{
-			return std::unique_ptr<sql::PreparedStatement>(
-				connection_->prepareStatement(query)
-			);
-		}
-		catch (sql::SQLException& e)
-		{
-			std::cout << "DB PrepareStatement Error: " << e.what() << std::endl;
-			return nullptr;
 		}
 	}
 

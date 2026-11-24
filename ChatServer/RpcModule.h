@@ -59,45 +59,39 @@ inline Packet& operator>>(Packet& packet, std::vector<T>& vec)
 	return packet;
 }
 
-inline Packet& operator<<(Packet& packet, LoginId& loginId)
+inline Packet& operator<<(Packet& packet, Email& email)
 {
-	packet.Write(reinterpret_cast<char*>(loginId.loginId_), sizeof(LoginId));
-
+	packet.Write(reinterpret_cast<char*>(email.email_), sizeof(Email));
 	return packet;
 }
 
-inline Packet& operator>>(Packet& packet, LoginId& loginId)
+inline Packet& operator>>(Packet& packet, Email& email)
 {
-	packet.Read(reinterpret_cast<char*>(loginId.loginId_), sizeof(LoginId));
-
+	packet.Read(reinterpret_cast<char*>(email.email_), sizeof(Email));
 	return packet;
 }
 
 inline Packet& operator<<(Packet& packet, Nickname& nickname)
 {
 	packet.Write(reinterpret_cast<char*>(nickname.nickname_), sizeof(Nickname));
-
 	return packet;
 }
 
 inline Packet& operator>>(Packet& packet, Nickname& nickname)
 {
 	packet.Read(reinterpret_cast<char*>(nickname.nickname_), sizeof(Nickname));
-
 	return packet;
 }
 
 inline Packet& operator<<(Packet& packet, SessionKey& sessionKey)
 {
 	packet.Write(reinterpret_cast<char*>(sessionKey.sessionKey_), sizeof(SessionKey));
-
 	return packet;
 }
 
 inline Packet& operator>>(Packet& packet, SessionKey& sessionKey)
 {
 	packet.Read(reinterpret_cast<char*>(sessionKey.sessionKey_), sizeof(SessionKey));
-
 	return packet;
 }
 
@@ -105,7 +99,6 @@ inline Packet& operator<<(Packet& packet, Chat& chat)
 {
 	packet << chat.len_;
 	packet.Write(reinterpret_cast<char*>(chat.chat_), chat.len_);
-
 	return packet;
 }
 
@@ -113,6 +106,17 @@ inline Packet& operator>>(Packet& packet, Chat& chat)
 {
 	packet >> chat.len_;
 	packet.Read(reinterpret_cast<char*>(chat.chat_), chat.len_);
+	return packet;
+}
 
+inline Packet& operator<<(Packet& packet, IpAddress& ipAddress)
+{
+	packet.Write(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(Nickname));
+	return packet;
+}
+
+inline Packet& operator>>(Packet& packet, IpAddress& ipAddress)
+{
+	packet.Read(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(Nickname));
 	return packet;
 }
