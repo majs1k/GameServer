@@ -5,6 +5,7 @@
 #include <unordered_map>
 //#include <stack>
 //#include <mutex>
+#include <thread>
 #include <atomic>
 #include <WinSock2.h>
 //#include <Windows.h>
@@ -38,6 +39,7 @@ private:
 		IO_TYPE type_;
 	};
 
+	// 클라이언트 세션
 	struct Session
 	{
 		//OverlappedEx acceptOverlapped_;
@@ -95,8 +97,8 @@ private:
 	SOCKET listenSocket_;
 	std::string serverIp_;
 	int serverPort_;
-	HANDLE recvCompletionPort_;
-	std::vector<HANDLE> recvThread_;
+	HANDLE workerCompletionPort_;
+	std::vector<HANDLE> workerThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;
@@ -104,8 +106,7 @@ private:
 	static unsigned int __stdcall WorkerThread(void* param);
 	void WorkerFunc();
 
-	//constexpr static int PROTOCOL_SEND_PACKET = 1;
-
+	constexpr static int PROTOCOL_SEND_PACKET = 1;
 
 	// ============================================================================
 	// Session
@@ -127,45 +128,13 @@ protected:
 
 	LONG sessionCount_ = 0;
 	int sessionMax_;
+	std::thread schedulerThread_;
+	constexpr static int TIMEOUT_MS = 40'000;
 
 	uint64_t GetSessionId(uint64_t sessionId);
 	int GetSessionIndex(uint64_t sessionId);
-
-	constexpr static int TIMEOUT_MS = 40'000;
-
-	/// TODO: 수정중
-	void CheckTimeout()
-	{
-		for (auto& session : sessions_)
-		{
-			/// TODO: 별도 변수 분리?
-			if (session->ioCount_ == 0)
-				continue;
-
-			// 세션 보장용 카운트 증가
-			while (1)
-			{
-				int count = session->ioCount_;
-
-				if (count & RELEASE_MASK)
-					continue;
-
-				if (InterlockedCompareExchange(&session->ioCount_, count + 1, count) == count)
-					break;
-			}
-
-			int64_t timeDiff = GetTickCount64() - session->lastRecvTime_;
-
-			if (timeDiff > TIMEOUT_MS)
-			{
-				//timeoutCountTotal_++;
-				Disconnect(session->sessionId_);
-			}
-
-			ReleaseSession(session);
-		}
-	}
-
+	static void SchedulerThread(NetServer* server);
+	void CheckTimeout();
 
 	// ============================================================================
 	// Accept Thread
@@ -213,7 +182,7 @@ private:
 	void SendFunc();
 
 	// ============================================================================
-	// Monitoring
+	// Counter
 	// ============================================================================
 protected:
 
@@ -224,6 +193,7 @@ protected:
 	std::atomic<int> acceptCountTotal_ = 0;
 	std::atomic<int> disconnectCountTotal_ = 0;
 	std::atomic<int> sendWorkCount_ = 0;
+	std::atomic<int> timeoutCountTotal_ = 0;
 
 	// ============================================================================
 	// Debugging
@@ -231,12 +201,19 @@ protected:
 public:
 
 	/// 더미에서 attack 안 켰을때 연결 종료 전 = 메세지 도착으로 확인 가능
-	//std::unordered_map<uint64_t, int> debuggingMap_;
-	//std::mutex debuggingLock_;
+	std::unordered_map<uint64_t, int> debuggingMap_;
+	std::mutex debuggingLock_;
 
 	/// 로그 사용 시 동기화 문제 추적 안될 때
 	//LockStack<int> debugIndexPool_;
 	//inline static std::atomic<int> testcount = 0;
 	//// playerId -> sessionId
 	//std::map<int64_t, uint64_t> testset;
+
+	/// 안전하지 않은 로그인 서버 전용 함수
+	std::string GetSessionIp(uint64_t sessionId)
+	{
+		Session* session = sessions_[GetSessionIndex(sessionId)];
+		return session->ip_;
+	}
 };

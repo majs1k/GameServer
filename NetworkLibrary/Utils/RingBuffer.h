@@ -13,6 +13,7 @@
 #pragma once
 #include <iostream>
 
+
 class RingBuffer
 {
 private:

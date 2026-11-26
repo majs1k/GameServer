@@ -72,6 +72,7 @@ class Packet;
 
 inline MemoryPoolTls<Packet> packetPool_;
 
+
 class Packet
 {
 private:

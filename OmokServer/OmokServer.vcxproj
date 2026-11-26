@@ -133,16 +133,8 @@
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="OmokClient.cpp" />
-    <ClCompile Include="OmokClientMain.cpp" />
-    <ClCompile Include="OmokServer.cpp" />
-    <ClCompile Include="OmokServerMain.cpp" />
-    <ClCompile Include="OmokServer_Db.cpp" />
-    <ClCompile Include="OmokServer_Rpc.cpp" />
-    <ClCompile Include="RpcModule.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameRoom.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
     <ClInclude Include="ImGui\imgui_impl_dx11.h" />
@@ -151,17 +143,6 @@
     <ClInclude Include="ImGui\imstb_rectpack.h" />
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
-    <ClInclude Include="MatchMaker.h" />
-    <ClInclude Include="OmokClient.h" />
-    <ClInclude Include="OmokClientUI.h" />
-    <ClInclude Include="OmokGame.h" />
-    <ClInclude Include="OmokServer.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="ResponseCode.h" />
-    <ClInclude Include="RpcModule.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="OmokConfig.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

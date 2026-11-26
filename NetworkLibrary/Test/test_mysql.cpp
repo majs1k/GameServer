@@ -1,19 +1,13 @@
 #include <iostream>
 
-#include "Database/Database.h"
+#include "MySQL.h"
 
 int main()
 {
-	Database db;
+	MySQL db;
 
 	// 1. DB 연결
-	if (!db.Connect("tcp://127.0.0.1:3306", "root", "1234", "test"))
-	{
-		std::cout << "DB Connection Failed!" << std::endl;
-		return 1;
-	}
-
-	std::cout << "DB Connected!" << std::endl;
+	db.Connect("tcp://127.0.0.1:3306", "root", "1234", "test");
 
 	// 2. 테이블 생성
 	db.Execute(
@@ -23,11 +17,21 @@ int main()
 		"age INT)"
 	);
 
+	db.Execute(
+		"start transaction;"
+	);
+
 	// 3. INSERT
 	db.Execute(
 		"INSERT INTO TestTable (name, age) "
 		"VALUES ('Player1', 25)"
 	);
+
+
+	db.Execute(
+		"commit;"
+	);
+
 
 	std::cout << "INSERT Success!" << std::endl;
 

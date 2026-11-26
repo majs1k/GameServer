@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>

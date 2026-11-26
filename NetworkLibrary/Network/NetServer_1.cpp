@@ -40,6 +40,8 @@ void NetServer::Session::Initialize(uint64_t sessionId, std::string& ip, int por
 	//Packet* packet = packetPool_.Alloc();
 	//packet->Clear(sizeof(NET_HEADER));
 	//recvPacket_ = packet;
+
+	lastRecvTime_ = GetTickCount64();
 }
 
 void NetServer::Session::Clear()
@@ -79,11 +81,15 @@ NetServer::NetServer()
 	{
 		__debugbreak();
 	}
+
+	schedulerThread_ = std::thread(SchedulerThread, this);
 }
 
 NetServer::~NetServer()
 {
 	WSACleanup();
+
+	schedulerThread_.join();
 }
 
 bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCount, int workerCount)
@@ -133,15 +139,15 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 	//setsockopt(listenSocket_, SOL_SOCKET, SO_SNDBUF, (const char*)(&sndBufSize), sizeof(sndBufSize));
 
 
-	recvCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
+	workerCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, concurrentCount_);
 
 	/// 리슨소켓을 IOCP에 등록
-	CreateIoCompletionPort((HANDLE)listenSocket_, recvCompletionPort_, (u_long)0, 0);
+	CreateIoCompletionPort((HANDLE)listenSocket_, workerCompletionPort_, (u_long)0, 0);
 
 	for (int i = 0; i < workerCount_; i++)
 	{
 		HANDLE hThread = (HANDLE)_beginthreadex(nullptr, 0, WorkerThread, this, 0, nullptr);
-		recvThread_.push_back(hThread);
+		workerThread_.push_back(hThread);
 	}
 
 	/// send 스레드
@@ -228,7 +234,7 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 
 	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
-	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Start");
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "server start");
 	return true;
 }
 
@@ -243,10 +249,10 @@ void NetServer::Stop()
 	// worker thread 종료
 	for (int i = 0; i < workerCount_; i++)
 	{
-		PostQueuedCompletionStatus(recvCompletionPort_, 0, 0, nullptr);
+		PostQueuedCompletionStatus(workerCompletionPort_, 0, 0, nullptr);
 	}
 
-	WaitForMultipleObjects(workerCount_, recvThread_.data(), TRUE, INFINITE);
+	WaitForMultipleObjects(workerCount_, workerThread_.data(), TRUE, INFINITE);
 
 	/// send thread 종료
 	for (int i = 0; i < SEND_WORKER_COUNT; i++)
@@ -256,7 +262,7 @@ void NetServer::Stop()
 
 	for (int i = 0; i < workerCount_; i++)
 	{
-		CloseHandle(recvThread_[i]);
+		CloseHandle(workerThread_[i]);
 	}
 
 	// 세션맵 정리
@@ -280,9 +286,9 @@ void NetServer::Stop()
 	}
 
 	// IOCP 삭제
-	CloseHandle(recvCompletionPort_);
+	CloseHandle(workerCompletionPort_);
 
-	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "NetServer Stop");
+	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "server stop");
 }
 
 bool NetServer::Disconnect(uint64_t sessionId)
@@ -373,7 +379,7 @@ bool NetServer::SendPacket(uint64_t sessionId, Packet* packet)
 	/// 기존 방식
 	//SendPost(session);
 
-	/// TODO: Send Thread 전달
+	/// Send Thread 전달
 	sendWorkCount_++;
 	InterlockedIncrement(&session->ioCount_);
 	PostQueuedCompletionStatus(sendCompletionPort_, 0, (ULONG_PTR)session, nullptr);
@@ -456,7 +462,7 @@ void NetServer::CompleteAccept(SOCKET socket)
 	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / ip=%s / port=%d", session->sessionId_, ip.c_str(), port);
 	//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session create / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
 
-	CreateIoCompletionPort((HANDLE)socket, recvCompletionPort_, (ULONG_PTR)session, 0);
+	CreateIoCompletionPort((HANDLE)socket, workerCompletionPort_, (ULONG_PTR)session, 0);
 	InterlockedIncrement(&sessionCount_);
 	OnAccept(session->sessionId_);
 	RecvPost(session);
@@ -544,11 +550,11 @@ void NetServer::WorkerFunc()
 		//numOfBytes = 0;
 
 		// GQCS 호출 반환시 overlapped 구조체 무조건 세팅
-		BOOL ret = GetQueuedCompletionStatus(recvCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(workerCompletionPort_, &numOfBytes, reinterpret_cast<PULONG_PTR>(&session), &overlapped_, INFINITE);
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
-			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "IO Worker Thread Stop");
+			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "worker thread stop");
 			return;
 		}
 
@@ -670,44 +676,13 @@ void NetServer::SendFunc()
 
 		if (overlapped_ == nullptr && session == nullptr && numOfBytes == 0)
 		{
-			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "Send Thread Stop");
+			LOG("NETWORK", ELOG::SYSTEM_LEVEL, "send thread stop");
 			return;
 		}
 
-		/// TODO: 주석처리 가능한지 확인
 		if (!ret)
 		{
-			int error = GetLastError();
-
-			// 실패한 IO (연결 끊김)
-			// 완료 패킷을 꺼내서, 실패한 IO에 대한 정보를 매개변수에 저장함
-			if (overlapped_ != nullptr)
-			{
-				// 64 상대가 연결을 끊었을때
-				if (error == ERROR_NETNAME_DELETED)
-				{
-					ReleaseSession(session);
-					continue;
-				}
-
-				// 1236 내가 연결을 끊었을때
-				// 세션 정리때 closesocket을 하므로 지금 구조에선 shutdown 호출시만 발생 가능
-				if (error == ERROR_CONNECTION_ABORTED)
-				{
-					ReleaseSession(session);
-					continue;
-				}
-
-				// 121 tcp 재전송 최대 횟수 초과시
-				if (error == ERROR_SEM_TIMEOUT)
-				{
-					ReleaseSession(session);
-					continue;
-				}
-
-				LOG("NETWORK", ELOG::ERROR_LEVEL, "send thread GQCS() error=%d / id=0x%016llx", error, session->sessionId_);
-				__debugbreak();
-			}
+			__debugbreak();
 		}
 
 		sendWorkCount_--;
@@ -716,6 +691,55 @@ void NetServer::SendFunc()
 	}
 }
 
+void NetServer::SchedulerThread(NetServer* server)
+{
+	int64_t cnt = 0;
+
+	while (!server->shutdown_)
+	{
+		if (cnt % 20 == 0)
+		{
+			//server->CheckTimeout();
+		}
+
+		cnt++;
+
+		Sleep(1'000);
+	}
+}
+
+/// TODO: 수정
+void NetServer::CheckTimeout()
+{
+	for (auto& session : sessions_)
+	{
+		if (session->ioCount_ == 0)
+			continue;
+
+		// 세션 보장용 카운트 증가
+		while (1)
+		{
+			int count = session->ioCount_;
+
+			if (count & RELEASE_MASK)
+				continue;
+
+			if (InterlockedCompareExchange(&session->ioCount_, count + 1, count) == count)
+				break;
+		}
+
+		int64_t timeDiff = GetTickCount64() - session->lastRecvTime_;
+
+		if (timeDiff > TIMEOUT_MS)
+		{
+			timeoutCountTotal_++;
+			Disconnect(session->sessionId_);
+		}
+
+		// 세션 보장용 카운트 감소
+		ReleaseSession(session);
+	}
+}
 
 // ===================================================================
 // Socket Error Code

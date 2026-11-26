@@ -190,20 +190,41 @@ enum en_PACKET_TYPE
 //
 //#pragma pack(pop)
 
-
 struct Email
 {
 	wchar_t email_[20];
+
+	Email() = default;
+
+	Email(std::string& email)
+	{
+		std::wstring ws;
+		ws.assign(email.begin(), email.end());
+
+		wcscpy_s(email_, 20, ws.c_str());
+	}
 };
 
 struct Nickname
 {
 	wchar_t nickname_[20];
+
+	Nickname() = default;
+
+	Nickname(std::string& nickname)
+	{
+		std::wstring ws;
+		ws.assign(nickname.begin(), nickname.end());
+
+		wcscpy_s(nickname_, 20, ws.c_str());
+	}
 };
 
 struct SessionKey
 {
 	char sessionKey_[64];
+
+	SessionKey() = default;
 
 	bool operator==(const SessionKey& other) const
 	{
@@ -226,7 +247,7 @@ struct Chat
 	Chat(const wchar_t* chat)
 	{
 		wcscpy_s(chat_, 100, chat);
-		len_ = wcslen(chat_) * sizeof(wchar_t);
+		len_ = static_cast<short>(wcslen(chat_) * sizeof(wchar_t));
 	}
 };
 
@@ -256,4 +277,11 @@ struct Pkt_Chat
 struct IpAddress
 {
 	wchar_t ipAddress_[16];
+
+	IpAddress() = default;
+
+	IpAddress(const std::wstring ipAddress)
+	{
+		wcscpy_s(ipAddress_, 16, ipAddress.c_str());
+	}
 };

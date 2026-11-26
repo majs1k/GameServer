@@ -1,6 +1,7 @@
 #pragma once
 #include "MemoryPoolTls.h"
 
+
 template <typename T>
 struct LockFreeNode
 {

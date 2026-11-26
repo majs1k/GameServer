@@ -32,14 +32,12 @@ ChatServer::ChatServer()
 	g_RpcProxy.serverProxy_ = this;
 
 	logicThread_ = std::thread(LogicThread, this);
-	schedulerThread_ = std::thread(SchedulerThread, this);
 	monitorThread_ = std::thread(MonitorThread, this);
 }
 
 ChatServer::~ChatServer()
 {
 	logicThread_.join();
-	schedulerThread_.join();
 	monitorThread_.join();
 }
 
@@ -77,23 +75,6 @@ void ChatServer::LogicThread(ChatServer* server)
 	}
 }
 
-void ChatServer::SchedulerThread(ChatServer* server)
-{
-	int64_t cnt = 0;
-
-	while (!server->shutdown_)
-	{
-		if (cnt % 10 == 0)
-		{
-			server->CheckTimeout();
-		}
-
-		cnt++;
-
-		Sleep(1'000);
-	}
-}
-
 void ChatServer::MonitorThread(ChatServer* server)
 {
 	while (!server->shutdown_)
@@ -104,11 +85,9 @@ void ChatServer::MonitorThread(ChatServer* server)
 	}
 }
 
-
 void ChatServer::Monitoring()
 {
 	int acceptCount = acceptCount_.exchange(0);
-
 	int procMessgaeCount = procMessageCount_.exchange(0);
 	int recvMessageCount = recvMessageCount_.exchange(0);
 	int sendMessageCount = sendMessageCount_.exchange(0);
@@ -116,13 +95,12 @@ void ChatServer::Monitoring()
 	int messageCount_SS_CreatePlayer = messageCount_SS_CreatePlayer_.exchange(0);
 	int messageCount_SS_RemovePlayer = messageCount_SS_RemovePlayer_.exchange(0);
 	int messageCount_NETWORK_PACKET = messageCount_CS_NETWORK_PACKET_.exchange(0);
-
-	int messageCount_CS_ReqConnectChatServer = messageCount_CS_ReqConnectChatServer_.exchange(0);
+	int messageCount_CS_ReqConnectChatServer = messageCount_CS_ReqEnterChatServer_.exchange(0);
 	int messageCount_CS_ReqSectorMove = messageCount_CS_ReqSectorMove_.exchange(0);
 	int messageCount_CS_ReqChat = messageCount_CS_ReqChat_.exchange(0);
 
-
 	printf("=========================\n");
+	printf("CHAT SERVER\n");
 	printf("=========================\n\n");
 
 	printf("Session	   : %d\n", sessionCount_);
@@ -131,19 +109,16 @@ void ChatServer::Monitoring()
 	printf("Accept     : %d\n", acceptCountTotal_.load());
 	printf("Discon     : %d\n", disconnectCountTotal_.load());
 	printf("DupLogin   : %d\n", dupLoginCountTotal_.load());
-	printf("Timeout    : %d\n\n", timeoutCountTotal_.load());
-
+	printf("Timeout    : %d\n", timeoutCountTotal_.load());
 	printf("Accept TPS : %d\n", acceptCount);
 	printf("MessageQ   : %d\n", messageQueue_.Size());
 	printf("SendWork   : %d\n\n", sendWorkCount_.load());
 
 	printf("Update TPS : %d\n", procMessgaeCount);
 	printf("Recv   TPS : %d\n", recvMessageCount);
-	printf("Send   TPS : %d\n\n", sendMessageCount);
-
+	printf("Send   TPS : %d\n", sendMessageCount);
 	printf("Create     : %d\n", messageCount_SS_CreatePlayer);
-	printf("Remove     : %d\n\n", messageCount_SS_RemovePlayer);
-
+	printf("Remove     : %d\n", messageCount_SS_RemovePlayer);
 	printf("Network    : %d\n", messageCount_NETWORK_PACKET);
 	printf("Connect    : %d\n", messageCount_CS_ReqConnectChatServer);
 	printf("Move       : %d\n", messageCount_CS_ReqSectorMove);

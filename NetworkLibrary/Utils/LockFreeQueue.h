@@ -20,6 +20,7 @@
 //Log logger[MAX_INDEX];
 //alignas(64) uint64_t idx;
 
+
 template <typename T>
 class LockFreeQueue
 {

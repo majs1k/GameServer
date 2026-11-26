@@ -13,6 +13,9 @@
 #include <algorithm>
 #include <Windows.h>
 
+#define MEMORY_DETECTOR
+
+
 class MemoryDetector
 {
 private:
@@ -126,8 +129,9 @@ inline void operator delete[](void* ptr)
 	free(ptr);
 }
 
-#define MEMORY_DETECTOR
 
 #ifdef MEMORY_DETECTOR
+
 #define new new(__FILE__, __LINE__)
+
 #endif

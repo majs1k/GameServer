@@ -10,7 +10,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
     {
     case 1:
     {
-        messageCount_CS_ReqConnectChatServer_++;
+        messageCount_CS_ReqEnterChatServer_++;
 
 		int64_t playerId;
 		Email email;
@@ -22,11 +22,11 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         if (packet->IsError())
             return false;
 
-        return CS_ReqConnectChatServer(sessionId, playerId, email, nickname, sessionKey);
+        return CS_ReqEnterChatServer(sessionId, playerId, email, nickname, sessionKey);
     }
     case 2:
     {
-        messageCount_SC_ResConnectChatServer_++;
+        messageCount_SC_ResEnterChatServer_++;
 
 		byte status;
 		int64_t playerId;
@@ -36,7 +36,7 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
         if (packet->IsError())
             return false;
 
-        return SC_ResConnectChatServer(sessionId, status, playerId);
+        return SC_ResEnterChatServer(sessionId, status, playerId);
     }
     case 3:
     {
@@ -132,18 +132,17 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 		byte status;
 		Email email;
 		Nickname nickname;
-		SessionKey sessionKey;
 		IpAddress gameServerIp;
 		ushort gameServerPort;
 		IpAddress chatServerIp;
 		ushort chatServerPort;
 
-        *packet >> userId >> status >> email >> nickname >> sessionKey >> gameServerIp >> gameServerPort >> chatServerIp >> chatServerPort;
+        *packet >> userId >> status >> email >> nickname >> gameServerIp >> gameServerPort >> chatServerIp >> chatServerPort;
 
         if (packet->IsError())
             return false;
 
-        return SC_ResLogin(sessionId, userId, status, email, nickname, sessionKey, gameServerIp, gameServerPort, chatServerIp, chatServerPort);
+        return SC_ResLogin(sessionId, userId, status, email, nickname, gameServerIp, gameServerPort, chatServerIp, chatServerPort);
     }
     default:
     {
@@ -153,12 +152,12 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
 }
 
 
-bool RpcStub::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
+bool RpcStub::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
     return true;
 }
 
-bool RpcStub::SC_ResConnectChatServer(uint64_t sessionId, byte status, int64_t playerId)
+bool RpcStub::SC_ResEnterChatServer(uint64_t sessionId, byte status, int64_t playerId)
 {
     return true;
 }
@@ -193,7 +192,7 @@ bool RpcStub::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessio
     return true;
 }
 
-bool RpcStub::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
+bool RpcStub::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
 {
     return true;
 }

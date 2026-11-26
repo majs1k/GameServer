@@ -44,9 +44,8 @@ private:
 	enum PROTOCOL
 	{
 		CS_NETWORK_PACKET_CHAT_SERVER = 0,
-		SS_CREATE_PLAYER = 1,
-		SS_REMOVE_PLAYER = 2,
-		SS_CHECK_TIMEOUT = 3,
+		IN_CREATE_PLAYER = 1,
+		IN_REMOVE_PLAYER = 2,
 	};
 
 public:
@@ -70,12 +69,10 @@ private:
 private:
 
 	static void LogicThread(ChatServer* server);
-	static void SchedulerThread(ChatServer* server);
 	static void MonitorThread(ChatServer* server);
 	void Monitoring();
 
 	std::thread logicThread_;
-	std::thread schedulerThread_;
 	std::thread monitorThread_;
 
 	// ===================================================================================== //
@@ -106,25 +103,21 @@ private:
 	void ProcessMessageQueue();
 	void CreatePlayer(uint64_t sessionId);
 	void RemovePlayer(uint64_t sessionId);
-	void CheckTimeout();
 	bool SS_CreatePlayer(uint64_t sessionId);
 	bool SS_RemovePlayer(uint64_t sessionId);
-	bool SS_CheckTimeout();
 
-	constexpr static int TIMEOUT_MS = 40'000;
 	std::atomic<int> procMessageCount_ = 0;
 	std::atomic<int> messageCount_CS_NETWORK_PACKET_ = 0;
 	std::atomic<int> messageCount_SS_CreatePlayer_ = 0;
 	std::atomic<int> messageCount_SS_RemovePlayer_ = 0;
 	std::atomic<int> dupLoginCountTotal_ = 0;
-	std::atomic<int> timeoutCountTotal_ = 0;
 
 	// ===================================================================================== //
 	// RPC
 	// ===================================================================================== //
 private:
 
-	bool CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey) override;
+	bool CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey) override;
 	bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
 	bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 	bool CS_ReqHeartbeat(uint64_t sessionId) override;

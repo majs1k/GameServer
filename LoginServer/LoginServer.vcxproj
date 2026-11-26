@@ -117,11 +117,15 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc;C:\Study\hiredis-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\LoginServer</AdditionalLibraryDirectories>
+      <AdditionalDependencies>hiredis.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -130,6 +134,8 @@
     <ClInclude Include="RpcModule.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CommonProtocol.cpp" />
+    <ClCompile Include="LoginServerMain.cpp" />
     <ClCompile Include="LoginServer.cpp" />
     <ClCompile Include="LoginServer_Protocol.cpp" />
     <ClCompile Include="LoginServer_Rpc.cpp" />
@@ -139,6 +145,9 @@
     <ProjectReference Include="..\NetworkLibrary\NetworkLibrary.vcxproj">
       <Project>{61010835-6b4a-49b1-95e9-b4fdf1a96194}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LoginConfig.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

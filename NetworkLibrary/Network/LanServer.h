@@ -95,8 +95,8 @@ private:
 	SOCKET listenSocket_;
 	std::string serverIp_;
 	int serverPort_;
-	HANDLE recvCompletionPort_;
-	std::vector<HANDLE> recvThread_;
+	HANDLE workerCompletionPort_;
+	std::vector<HANDLE> workerThread_;
 	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;

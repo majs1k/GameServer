@@ -12,8 +12,6 @@
 
 RpcProxy g_RpcProxy;
 
-DbProxy g_DbProxy;
-
 
 inline Packet& operator<<(Packet& packet, std::string& str)
 {
@@ -152,6 +150,3 @@ inline Packet& operator>>(Packet& packet, STONE& stone)
 
 #include "RPC/RpcProxy.cpp"
 #include "RPC/RpcStub.cpp"
-
-#include "Database/DbProxy.cpp"
-#include "Database/DbStub.cpp"

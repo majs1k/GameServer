@@ -1,7 +1,7 @@
 
-CS_ReqConnectChatServer(int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)		1
+CS_ReqEnterChatServer(int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)		1
 	
-SC_ResConnectChatServer(byte status, int64_t playerId)														2
+SC_ResEnterChatServer(byte status, int64_t playerId)														2
 
 CS_ReqSectorMove(int64_t playerId, ushort sectorX, ushort sectorY)											3
 
@@ -15,4 +15,4 @@ CS_ReqHeartbeat()																							7
 
 CS_ReqLogin(int64_t userId, SessionKey& sessionKey)															101
 	
-SC_ResLogin(int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)	102
+SC_ResLogin(int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)	102

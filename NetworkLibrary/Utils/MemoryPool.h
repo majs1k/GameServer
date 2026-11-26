@@ -31,6 +31,7 @@
 #include <list>
 //#define DEBUG_MEMORYPOOL
 
+
 template <class T>
 class MemoryPool
 {

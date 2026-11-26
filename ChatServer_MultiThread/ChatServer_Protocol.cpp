@@ -17,7 +17,7 @@ void ChatServer_Multi::ProcessMessageQueue()
 		uint64_t sessionId = message->sessionId_;
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
-		bool isSuccess;
+		bool success;
 
 		procMessageCount_++;
 
@@ -26,36 +26,31 @@ void ChatServer_Multi::ProcessMessageQueue()
 		case CS_NETWORK_PACKET:
 		{
 			messageCount_CS_NETWORK_PACKET_++;
-			isSuccess = PacketProc(sessionId, packet);
+			success = PacketProc(sessionId, packet);
 
 			break;
 		}
 
-		case SS_CREATE_PLAYER:
+		case IN_CREATE_PLAYER:
 
 			messageCount_SS_CreatePlayer_++;
-			isSuccess = SS_CreatePlayer(sessionId);
+			success = SS_CreatePlayer(sessionId);
 			break;
 
-		case SS_REMOVE_PLAYER:
+		case IN_REMOVE_PLAYER:
 
 			messageCount_SS_RemovePlayer_++;
-			isSuccess = SS_RemovePlayer(sessionId);
-			break;
-
-		case SS_CHECK_TIMEOUT:
-
-			isSuccess = SS_CheckTimeout();
+			success = SS_RemovePlayer(sessionId);
 			break;
 
 		case SS_SECTOR_MOVE:
 
-			isSuccess = SS_ReqSectorMove(sessionId, packet);
+			success = SS_ReqSectorMove(sessionId, packet);
 			break;
 
 		case SS_CHAT:
 
-			isSuccess = SS_ReqChat(sessionId, packet);
+			success = SS_ReqChat(sessionId, packet);
 			break;
 
 		default:
@@ -63,17 +58,9 @@ void ChatServer_Multi::ProcessMessageQueue()
 			__debugbreak();
 		}
 
-		if (!isSuccess)
+		if (!success)
 		{
 			Disconnect(sessionId);
-		}
-
-		auto it = sessionIdToPlayer_.find(sessionId);
-
-		if (it != sessionIdToPlayer_.end())
-		{
-			Player* player = it->second;
-			player->lastRecvTime_ = GetTickCount64();
 		}
 
 		if (packet != nullptr)
@@ -89,7 +76,7 @@ void ChatServer_Multi::ProcessMessageQueue()
 void ChatServer_Multi::CreatePlayer(uint64_t sessionId)
 {
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, nullptr, SS_CREATE_PLAYER);
+	message->Initialize(sessionId, nullptr, IN_CREATE_PLAYER);
 
 	messageQueue_[INITIAL_MAP_ID].Enqueue(message);
 }
@@ -112,19 +99,10 @@ void ChatServer_Multi::RemovePlayer(uint64_t sessionId)
 	}
 
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, nullptr, SS_REMOVE_PLAYER);
+	message->Initialize(sessionId, nullptr, IN_REMOVE_PLAYER);
 
 	messageQueue_[player->mapId_].Enqueue(message);
 }
-
-void ChatServer_Multi::CheckTimeout()
-{
-	Message* message = messagePool_.Alloc();
-	message->Initialize(0, nullptr, SS_CHECK_TIMEOUT);
-
-	messageQueue_[0].Enqueue(message);
-}
-
 
 bool ChatServer_Multi::SS_CreatePlayer(uint64_t sessionId)
 {
@@ -180,32 +158,6 @@ bool ChatServer_Multi::SS_RemovePlayer(uint64_t sessionId)
 	// + 다른 플레이어들에게 퇴장 알림
 
 	playerPool_.Free(player);
-	return true;
-}
-
-bool ChatServer_Multi::SS_CheckTimeout()
-{
-	/// TODO: 이 방식 맞는지 확인
-	std::unordered_map<int64_t, Player*> map;
-
-	{
-		std::lock_guard<std::mutex> lock(playerMapLock_);
-
-		map = playerMap_;
-	}
-
-	for (auto& pm : map)
-	{
-		Player* p = pm.second;
-		int64_t timeDiff = GetTickCount64() - p->lastRecvTime_;
-
-		if (timeDiff > TIMEOUT_MS)
-		{
-			timeoutCountTotal_++;
-			Disconnect(p->sessionId_);
-		}
-	}
-
 	return true;
 }
 

@@ -1,24 +1,13 @@
 #pragma once
 #include <random>
-#include "Singleton.h"
 
-#define RAND(minValue, maxValue)          RandomMT::Instance().RandomRange(minValue, maxValue)
+#define RAND(minValue, maxValue)		RandomRange(minValue, maxValue)
 
-class RandomMT : public Singleton<RandomMT>
+inline std::random_device rd;
+inline std::mt19937 engine(rd());
+
+inline int RandomRange(int minValue, int maxValue)
 {
-public:
-
-    RandomMT()
-        : engine_(rd()) { }
-
-    int RandomRange(int minValue, int maxValue)
-    {
-        std::uniform_int_distribution<> dist(minValue, maxValue);
-        return dist(engine_);
-    }
-
-private:
-
-    std::random_device rd;
-    std::mt19937 engine_;
-};
+	std::uniform_int_distribution<> dist(minValue, maxValue);
+	return dist(engine);
+}

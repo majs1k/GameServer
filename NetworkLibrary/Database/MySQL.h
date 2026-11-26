@@ -21,7 +21,7 @@
 #include <cppconn/resultset.h>
 #include <cppconn/exception.h>
 
-class Database
+class MySQL
 {
 	struct QueryResult
 	{
@@ -35,9 +35,10 @@ private:
 	std::unique_ptr<sql::Connection> connection_;
 
 public:
-	Database() = default;
 
-	~Database()
+	MySQL() = default;
+
+	~MySQL()
 	{
 		if (connection_)
 		{
@@ -76,19 +77,18 @@ public:
 	}
 
 	// INSERT, UPDATE, DELETE, CREATE 등의 쿼리 실행
-	bool Execute(const std::string& query)
+	void Execute(const std::string& query)
 	{
 		try
 		{
 			std::unique_ptr<sql::Statement> statement(connection_->createStatement());
 
 			statement->execute(query);
-			return true;
 		}
 		catch (sql::SQLException& e)
 		{
 			std::cout << "DB Execute Error: " << e.what() << std::endl;
-			return false;
+			__debugbreak();
 		}
 	}
 
@@ -107,9 +107,7 @@ public:
 					std::unique_ptr<sql::ResultSet> result(statement->getResultSet());
 				}
 				else if (statement->getUpdateCount() == -1)
-				{
 					break;
-				}
 
 				hasResult = statement->getMoreResults();
 			}
@@ -139,33 +137,6 @@ public:
 			std::cout << e.what() << std::endl;
 			__debugbreak();
 			return {};
-		}
-	}
-
-	void BeginTransaction()
-	{
-		try
-		{
-			connection_->setAutoCommit(false);
-		}
-		catch (sql::SQLException& e)
-		{
-			std::cout << "DB BeginTransaction Error: " << e.what() << std::endl;
-			__debugbreak();
-		}
-	}
-
-	void Commit()
-	{
-		try
-		{
-			connection_->commit();
-			connection_->setAutoCommit(true);
-		}
-		catch (sql::SQLException& e)
-		{
-			std::cout << "DB Commit Error: " << e.what() << std::endl;
-			__debugbreak();
 		}
 	}
 

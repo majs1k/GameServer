@@ -25,6 +25,21 @@
 #include <conio.h>
 #include <Windows.h>
 
+#define PROFILER
+
+#ifdef PROFILER
+
+#define PRO(name)					ProfileGuard guard(name)
+#define PRO_BEGIN(name)				g_Profiler.BeginProfile(name)
+#define PRO_END(name)				g_Profiler.EndProfile(name)
+
+#else
+#define PRO(name)
+#define PRO_BEGIN(name)
+#define PRO_END(name)
+
+#endif
+
 
 class Profiler
 {
@@ -137,12 +152,6 @@ private:
 			QueryPerformanceCounter(&endTime);
 
 			Sample* sample = GetSample(name);
-
-			/// TODO: 삭제
-			if ((endTime.QuadPart - sample->startTime_.QuadPart) < 0)
-			{
-				__debugbreak();
-			}
 
 			// 100ns 단위 환산
 			int64_t timeDiff = (int64_t)((endTime.QuadPart - sample->startTime_.QuadPart) * 10'000'000 / freq_.QuadPart);
@@ -310,18 +319,3 @@ public:
 		g_Profiler.EndProfile(name_);
 	}
 };
-
-#define PROFILER
-
-#ifdef PROFILER
-
-#define PRO(name)					ProfileGuard guard(name)
-#define PRO_BEGIN(name)				g_Profiler.BeginProfile(name)
-#define PRO_END(name)				g_Profiler.EndProfile(name)
-
-#else
-#define PRO(name)
-#define PRO_BEGIN(name)
-#define PRO_END(name)
-
-#endif

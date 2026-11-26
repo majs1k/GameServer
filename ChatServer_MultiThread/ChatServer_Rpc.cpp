@@ -4,7 +4,7 @@
 #include "Utils/Logger.h"
 
 
-bool ChatServer_Multi::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
+bool ChatServer_Multi::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
 	Player* player;
 
@@ -22,7 +22,7 @@ bool ChatServer_Multi::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playe
 	// 이미 로그인 완료 시 실패 패킷만 보냄
 	if (player->isLogin_)
 	{
-		g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::FAIL, playerId);
+		g_RpcProxy.SC_ResEnterChatServer(sessionId, ELOGIN::FAIL, playerId);
 		return true;
 	}
 
@@ -77,7 +77,7 @@ bool ChatServer_Multi::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playe
 	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
-	g_RpcProxy.SC_ResConnectChatServer(sessionId, ELOGIN::SUCCESS, playerId);
+	g_RpcProxy.SC_ResEnterChatServer(sessionId, ELOGIN::SUCCESS, playerId);
 	return true;
 }
 

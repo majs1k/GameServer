@@ -15,6 +15,7 @@
 #include <minidumpapiset.h>
 #include <crtdbg.h>
 
+
 class CrashDump
 {
 public:

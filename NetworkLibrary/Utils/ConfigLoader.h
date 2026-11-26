@@ -7,58 +7,63 @@
 
 using namespace rapidjson;
 
+
 struct ServerConfig
 {
-    std::string ip;
-    int port;
-    int sessionMax;
-    int concurrentCount;
-    int workerCount;
+	std::string ip;
+	int port;
+	int sessionMax;
+	int concurrentCount;
+	int workerCount;
 
-    std::string dbHost;
-    std::string dbUser;
-    std::string dbPassword;
-    std::string dbSchema;
+	std::string dbHost;
+	std::string dbUser;
+	std::string dbPassword;
+	std::string dbSchema;
+
+	std::string redisHost;
+	int redisPort;
 };
 
 inline ServerConfig config;
+
 
 class ConfigLoader : public Singleton<ConfigLoader>
 {
 public:
 
-    bool Load(std::wstring path)
-    {
-        std::ifstream ifs(path);
+	bool Load(std::wstring path)
+	{
+		std::ifstream ifs(path);
 
-        if (!ifs.is_open())
-        {
-            printf("file name error");
-            __debugbreak();
-        }
+		if (!ifs.is_open())
+		{
+			printf("file name error");
+			__debugbreak();
+		}
 
-        IStreamWrapper isw(ifs);
+		IStreamWrapper isw(ifs);
 
-        Document doc;
-        doc.ParseStream(isw);
+		Document doc;
+		doc.ParseStream(isw);
 
-        if (doc.HasParseError())
-        {
-            printf("config parse error\n");
-            __debugbreak();
-        }
+		if (doc.HasParseError())
+		{
+			printf("config parse error\n");
+			__debugbreak();
+		}
 
-        config.ip = doc["IP"].GetString();
-        config.port = doc["Port"].GetInt();
-        config.sessionMax = doc["SessionMax"].GetInt();
-        config.concurrentCount = doc["ConcurrentCount"].GetInt();
-        config.workerCount = doc["WorkerCount"].GetInt();
-
-        config.dbHost = doc["DBHost"].GetString();
-        config.dbUser = doc["DBUser"].GetString();
-        config.dbPassword = doc["DBPassword"].GetString();
-        config.dbSchema = doc["DBSchema"].GetString();
-
-        return true;
-    }
+		config.ip = doc["IP"].GetString();
+		config.port = doc["Port"].GetInt();
+		config.sessionMax = doc["SessionMax"].GetInt();
+		config.concurrentCount = doc["ConcurrentCount"].GetInt();
+		config.workerCount = doc["WorkerCount"].GetInt();
+		config.dbHost = doc["DBHost"].GetString();
+		config.dbUser = doc["DBUser"].GetString();
+		config.dbPassword = doc["DBPassword"].GetString();
+		config.dbSchema = doc["DBSchema"].GetString();
+		config.redisHost = doc["RedisHost"].GetString();
+		config.redisPort = doc["RedisPort"].GetInt();
+		return true;
+	}
 };

@@ -3,76 +3,93 @@
 #include "RPC/RpcProxy.h"
 #include "Utils/Logger.h"
 #include "Utils/Profiler.h"
-
+#include "Utils/CommonUtility.h"
 
 bool LoginServer::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessionKey)
 {
-	/// sessionKey를 특정 플랫폼 API로 조회 -> 인증 성공
+	Email email;
+	Nickname nickname;
+	IpAddress gameServerIpAddress = (IpAddress)u8"1.2.3.4";
+	unsigned short gameServerPort = 0;
+	IpAddress chatServerIpAddress;
+	unsigned short chatServerPort = 0;
 
-	std::string emailString;
-	std::string nicknameString;
+	/// + 특정 플랫폼 API로 조회 -> 인증 성공 -> 세션키 발급(sessionKey)
 
 	/// userId로 테이블 조회
-	auto query = db_.ExecuteQuery(
-		"SELECT email, nickname, status FROM users WHERE user_id = "
+	auto query = mysql_.ExecuteQuery(
+		"SELECT email, nickname FROM users WHERE user_id = "
 		+ std::to_string(userId)
 	);
 
-	if (!query.result)
-	{
-		// 쿼리 실행 실패
-		__debugbreak();
-		return;
-	}
-
+	/// 조회 결과 없음
 	if (!query.result->next())
 	{
-		// 조회 결과 없음
-		/// 조회 실패
-
-
-
-		return;
+		g_RpcProxy.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_FAIL, email, nickname,
+			gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
+		return true;
 	}
 
-	emailString = query.result->getString("email");
-	nicknameString = query.result->getString("nickname");
+	//std::string status;
+	//bool success = redis_.Get("session:" + std::to_string(userId), status);
 
-	/// email, nickname ->  utf-16으로 변환
-	Email email = emailString;
-	Nickname nickname = nicknameString;
+	///// Key가 이미 존재해서 저장 x -> 중복 로그인
+	///// TODO: 중복 로그인 시 현재 연결은 유지 시 주석처리
+	//if (success)
+	//{
+	//	/// 접속 세션 삭제
+	//	redis_.Del("session:" + std::to_string(userId));
 
+	//	g_RpcProxy.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_GAME, email, nickname,
+	//		gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
 
+	//	/// + 게임 서버로 알림
 
+	//	return true;
+	//}
 
-	bool success = redis_.Set("user:1001", "player1", true, 60);
+	/// 유효기간 60초 발급
+	redis_.Set("token:" + std::to_string(userId), sessionKey.sessionKey_, false, 60);
 
-	if (success)
-	{
-		// Key가 없어서 새롭게 저장됨
-		/// 세션키 redis로 저장
+	//std::string emailString = query.result->getString("email");
+	//std::string nicknameString = query.result->getString("nickname");
 
-	}
-	else
-	{
-		// Key가 이미 존재해서 저장되지 않음
-		/// 중복 로그인
+	//Email email = emailString;
+	//Nickname nickname = nicknameString;
 
-	}
+	/// email, nickname -> std::string -> utf-16 (복사 생성자)
+	email = query.result->getString("email").asStdString();
+	nickname = query.result->getString("nickname").asStdString();
 
-	db_.Execute(
-		"UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = ?" + std::to_string(userId)
+	mysql_.Execute(
+		"UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = " + std::to_string(userId)
 	);
 
+	std::string chatServerIp;
+	std::string remoteIp = GetSessionIp(sessionId);
 
-	IpAddress gameServerIp = L"10.0.0.1";
-	unsigned short gameServerPort = 1234;
+	if (remoteIp == "127.0.0.1")
+	{
+		chatServerIp = u8"127.0.0.1";
+	}
+	else if (remoteIp == "10.0.1.1")
+	{
+		chatServerIp = u8"10.0.1.2";
+	}
+	else if (remoteIp == "10.0.2.1")
+	{
+		chatServerIp = u8"10.0.2.2";
+	}
 
-	IpAddress chatServerIp = L"10.0.0.1";
-	unsigned short chatServerPort = 1234;
+	chatServerIpAddress = chatServerIp;
+	chatServerPort = 12001;
 
+	//wcscpy_s(chatServerIpAddress.ipAddress_, 16, L"127.0.0.1");
 
-	/// 로그인 응답 send
-	SC_ResLogin(sessionId, userId, (unsigned char)status, email, nickname,
-		sessionKey, gameServerIp, gameServerPort, chatServerIp, chatServerPort);
+	/// lvalue가 와야함
+	/// 로그인 응답
+	g_RpcProxy.SC_ResLogin(sessionId, userId, (unsigned char)en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_OK, email, nickname,
+		gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
+
+	return true;
 }

@@ -42,9 +42,6 @@
     <ClInclude Include="Utils\Profiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Random.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\RingBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -171,7 +168,7 @@
     <ClInclude Include="Utils\rapidjson\writer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Database\Database.h">
+    <ClInclude Include="Database\MySQL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Network\NetServer.h">
@@ -187,6 +184,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Network\LanServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\Redis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\CommonUtility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Random.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

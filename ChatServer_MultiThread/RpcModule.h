@@ -8,7 +8,6 @@
 // ChatServer 전용 프록시 전역객체
 inline RpcProxy g_RpcProxy;
 
-
 inline Packet& operator<<(Packet& packet, std::string& str)
 {
 	packet << static_cast<short>(str.size());
@@ -111,12 +110,12 @@ inline Packet& operator>>(Packet& packet, Chat& chat)
 
 inline Packet& operator<<(Packet& packet, IpAddress& ipAddress)
 {
-	packet.Write(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(Nickname));
+	packet.Write(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(IpAddress));
 	return packet;
 }
 
 inline Packet& operator>>(Packet& packet, IpAddress& ipAddress)
 {
-	packet.Read(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(Nickname));
+	packet.Read(reinterpret_cast<char*>(ipAddress.ipAddress_), sizeof(IpAddress));
 	return packet;
 }

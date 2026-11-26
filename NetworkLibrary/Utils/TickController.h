@@ -17,6 +17,7 @@
 
 #define TARGET_FPS				 50
 
+
 class TickController : public Singleton<TickController>
 {
 private:

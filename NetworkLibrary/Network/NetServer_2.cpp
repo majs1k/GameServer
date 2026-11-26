@@ -7,6 +7,8 @@
 
 void NetServer::RecvPost(Session* session)
 {
+	PRO("hello");
+
 	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
@@ -57,6 +59,9 @@ void NetServer::RecvPost(Session* session)
 
 void NetServer::CompleteRecv(Session* session, int numOfBytes)
 {
+	/// 추가
+	session->lastRecvTime_ = GetTickCount64();
+
 	session->recvQueue_.MoveRear(numOfBytes);
 
 	if (session->recvQueue_.IsFull())
@@ -179,6 +184,9 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //
 //void NetServer::CompleteRecv(Session* session, int numOfBytes)
 //{
+// 	/// 추가
+//	session->lastRecvTime_ = GetTickCount64();
+// 
 //	int useSize = session->recvPacket_->UseSize();
 //	int processedBytes = 0;
 //	int totalBytes = numOfBytes + useSize;
@@ -393,7 +401,7 @@ void NetServer::SendPost(Session* session)
 			return;
 
 		// 10022 shutdown 시 알수 없는 이유로  매우 적은 확률로 이 에러가 발생
-		if (error == WSAECONNRESET  || error == WSAESHUTDOWN ||  error == WSAECONNABORTED || error == WSAEINVAL)
+		if (error == WSAECONNRESET || error == WSAESHUTDOWN || error == WSAECONNABORTED || error == WSAEINVAL)
 		{
 			ReleaseSession(session);
 			return;
@@ -447,7 +455,7 @@ void NetServer::ReleaseSession(Session* session)
 		if (InterlockedCompareExchange(&session->ioCount_, RELEASE_MASK, 0) != 0)
 			return;
 
-		/// 디버깅
+		/// TODO: 디버깅
 		//{
 		//	std::lock_guard<std::mutex> lock(debuggingLock_);
 
@@ -466,7 +474,7 @@ void NetServer::ReleaseSession(Session* session)
 		session->Clear();
 		InterlockedDecrement(&sessionCount_);
 		//LOG("NETWORK", ELOG::SYSTEM_LEVEL, "session release / id=0x%016llx / so=0x%016llx", session->sessionId_, session->socket_);
-		
+
 		/// accept 스레드 사용 시
 		closesocket(session->socket_);
 

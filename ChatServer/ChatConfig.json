@@ -8,5 +8,8 @@
   "DBHost": "tcp://127.0.0.1:3306",
   "DBUser": "root",
   "DBPassword": "1234",
-  "DBSchema": "test"
+  "DBSchema": "test",
+
+  "RedisHost": "127.0.0.1",
+  "RedisPort": 6379
 }

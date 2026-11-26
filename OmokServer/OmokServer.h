@@ -16,18 +16,14 @@
 #include "Repository/PlayerRepository.h"
 #include "Repository/InventoryRepository.h"
 
-//#include "RPC/RpcServerProxy.h"
 #include "RPC/RpcStub.h"
-
-//#include "Database/DbProxy.h"
-#include "Database/DbStub.h"
 
 
 class RpcServerProxy;
 class DbProxy;
 
 
-class OmokServer : public LanServer, public RpcStub, public DbStub
+class OmokServer : public LanServer, public RpcStub
 {
 private:
 

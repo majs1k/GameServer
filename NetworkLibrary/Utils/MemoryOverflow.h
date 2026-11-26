@@ -1,8 +1,17 @@
+// -----------------------------------------------------------------
+// 
+// 메모리 오버플로우 체크
+// 
+// new delete 연산자 오버로딩 활용
+// 32비트 시스템만 가능
+// 
+// -----------------------------------------------------------------
 #pragma once
 #include <windows.h>
-#include "Singleton.h"
 
-class MemoryOverflow : Singleton <MemoryOverflow>
+#define MEMORY_OVERFLOW
+
+class MemoryOverflow
 {
 public:
 
@@ -37,22 +46,20 @@ public:
 		char* addr = (char*)*p;
 		VirtualFree(addr, 0, MEM_RELEASE);
 	}
-
-	// 반드시 size_t 여야 함
-	static void* operator new(size_t size)
-	{
-		void* ptr = Alloc(size);
-		return ptr;
-	}
-
-	static void operator delete(void* ptr)
-	{
-		Free(ptr);
-	}
 };
 
-//#define MEMORY_OVERFLOW
-
 #ifdef	MEMORY_OVERFLOW
-#define new		MemoryOverflow::getInstance().new
+
+// 반드시 size_t 여야 함
+inline void* operator new(size_t size)
+{
+	void* ptr = MemoryOverflow::Alloc(size);
+	return ptr;
+}
+
+inline void operator delete(void* ptr)
+{
+	MemoryOverflow::Free(ptr);
+}
+
 #endif

@@ -363,35 +363,31 @@ enum en_PACKET_CS_MONITOR_TOOL_RES_LOGIN
 	dfMONITOR_TOOL_LOGIN_ERR_SESSIONKEY			= 3,		// 로그인 세션키 오류
 };
 
+#include <string>
+
 struct Email
 {
 	wchar_t email_[20];
 
-	Email(std::string& email)
-	{
-		std::wstring ws;
-		ws.assign(email.begin(), email.end());
+	Email() = default;
 
-		wcscpy_s(email_, 20, ws.c_str());
-	}
+	Email(const std::string& email);
 };
 
 struct Nickname
 {
 	wchar_t nickname_[20];
 
-	Nickname(std::string& nickname)
-	{
-		std::wstring ws;
-		ws.assign(nickname.begin(), nickname.end());
+	Nickname() = default;
 
-		wcscpy_s(nickname_, 20, ws.c_str());
-	}
+	Nickname(const std::string& nickname);
 };
 
 struct SessionKey
 {
 	char sessionKey_[64];
+
+	SessionKey() = default;
 
 	bool operator==(const SessionKey& other) const
 	{
@@ -411,11 +407,7 @@ struct Chat
 
 	Chat() = default;
 
-	Chat(const wchar_t* chat)
-	{
-		wcscpy_s(chat_, 100, chat);
-		len_ = static_cast<short>(wcslen(chat_) * sizeof(wchar_t));
-	}
+	Chat(const wchar_t* chat);
 };
 
 enum ELOGIN
@@ -426,18 +418,10 @@ enum ELOGIN
 
 struct IpAddress
 {
-	wchar_t ipAddress_[16];
+	/// TODO: 수정
+	wchar_t ipAddress_[16]{};
 
-	IpAddress(const wchar_t* ipAddress)
-	{
-		wcscpy_s(ipAddress_, 16, ipAddress);
-	}
-};
+	IpAddress() = default;
 
-struct Pkt_Session_Timeout
-{
-	using TimePoint = Clock::time_point;
-
-	uint64_t sessionId_;
-	TimePoint lastRecvTime_;
+	IpAddress(const std::string& ipAddress);
 };

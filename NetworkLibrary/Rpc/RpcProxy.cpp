@@ -2,7 +2,7 @@
 #include "RpcProxy.h"
 
 
-void RpcProxy::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
+void RpcProxy::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -15,7 +15,7 @@ void RpcProxy::CS_ReqConnectChatServer(uint64_t sessionId, int64_t playerId, Ema
     packet->Free();
 }
 
-void RpcProxy::SC_ResConnectChatServer(uint64_t sessionId, byte status, int64_t playerId)
+void RpcProxy::SC_ResEnterChatServer(uint64_t sessionId, byte status, int64_t playerId)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -106,13 +106,13 @@ void RpcProxy::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessi
     packet->Free();
 }
 
-void RpcProxy::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
+void RpcProxy::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
 
     *packet << static_cast<unsigned short>(102);
-    *packet << userId << status << email << nickname << sessionKey << gameServerIp << gameServerPort << chatServerIp << chatServerPort;
+    *packet << userId << status << email << nickname << gameServerIp << gameServerPort << chatServerIp << chatServerPort;
 
     serverProxy_->SendPacket(sessionId, packet);
 
@@ -120,7 +120,7 @@ void RpcProxy::SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Emai
 }
 
 
-void RpcProxy::CS_ReqConnectChatServer(std::vector<uint64_t>& sessionIds, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
+void RpcProxy::CS_ReqEnterChatServer(std::vector<uint64_t>& sessionIds, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -136,7 +136,7 @@ void RpcProxy::CS_ReqConnectChatServer(std::vector<uint64_t>& sessionIds, int64_
     packet->Free();
 }
 
-void RpcProxy::SC_ResConnectChatServer(std::vector<uint64_t>& sessionIds, byte status, int64_t playerId)
+void RpcProxy::SC_ResEnterChatServer(std::vector<uint64_t>& sessionIds, byte status, int64_t playerId)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
@@ -248,13 +248,13 @@ void RpcProxy::CS_ReqLogin(std::vector<uint64_t>& sessionIds, int64_t userId, Se
     packet->Free();
 }
 
-void RpcProxy::SC_ResLogin(std::vector<uint64_t>& sessionIds, int64_t userId, byte status, Email& email, Nickname& nickname, SessionKey& sessionKey, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
+void RpcProxy::SC_ResLogin(std::vector<uint64_t>& sessionIds, int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort)
 {
     Packet* packet = packetPool_.Alloc();
     packet->Initialize(sizeof(NET_HEADER));
 
     *packet << static_cast<unsigned short>(102);
-    *packet << userId << status << email << nickname << sessionKey << gameServerIp << gameServerPort << chatServerIp << chatServerPort;
+    *packet << userId << status << email << nickname << gameServerIp << gameServerPort << chatServerIp << chatServerPort;
 
     for (auto& sessionId : sessionIds)
 	{
