@@ -1,11 +1,8 @@
 #include "RpcStub.h"
 
 
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
+bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
 {
-    unsigned short type;
-    *packet >> type;
-
     switch (type)
     {
     case 1:

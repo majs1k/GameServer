@@ -6,14 +6,6 @@
 /// 워킹셋 & 프로세스 논페이지풀은 필요없음
 class Monitoring
 {
-private:
-
-	PDH_HQUERY cpuQuery;
-	PDH_HCOUNTER privateMemory;
-	PDH_HCOUNTER workingSet;
-	PDH_HCOUNTER available;
-	PDH_HCOUNTER nonpage;
-
 public:
 
 	Monitoring()
@@ -66,6 +58,14 @@ public:
 		PdhGetFormattedCounterValue(nonpage, PDH_FMT_DOUBLE, NULL, &counterVal);
 		return counterVal.doubleValue / 1024.0f / 1024.0f;
 	}
+
+private:
+
+	PDH_HQUERY cpuQuery;
+	PDH_HCOUNTER privateMemory;
+	PDH_HCOUNTER workingSet;
+	PDH_HCOUNTER available;
+	PDH_HCOUNTER nonpage;
 };
 
 

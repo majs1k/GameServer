@@ -530,7 +530,6 @@ void NetServer::CompleteAccept(SOCKET socket)
 //	RecvPost(session);
 //}
 
-
 unsigned int __stdcall NetServer::WorkerThread(void* param)
 {
 	NetServer* server = (NetServer*)param;
@@ -739,6 +738,12 @@ void NetServer::CheckTimeout()
 		// 세션 보장용 카운트 감소
 		ReleaseSession(session);
 	}
+}
+
+std::string NetServer::GetSessionIp(uint64_t sessionId)
+{
+	Session* session = sessions_[GetSessionIndex(sessionId)];
+	return session->ip_;
 }
 
 // ===================================================================

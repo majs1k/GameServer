@@ -25,60 +25,6 @@ enum class ELOG_MODE
 
 class Logger
 {
-private:
-
-	std::unordered_map<std::string, std::ofstream> logFiles_;
-	char directory_[MAX_PATH] = {};
-	std::mutex lock_;
-	ELOG_MODE mode_ = ELOG_MODE::DEBUG_MODE;
-	std::atomic<unsigned int> logSequence_ = 0;
-
-private:
-
-	bool OpenLogFile(const char* fileDirectory)
-	{
-		if (!CreateDirectoryA(directory_, nullptr))
-		{
-			if (GetLastError() != ERROR_ALREADY_EXISTS)
-				return false;
-		}
-
-		char fileName[MAX_PATH] = {};
-
-		SYSTEMTIME st;
-		GetLocalTime(&st);
-
-		HRESULT hr = StringCchPrintfA(fileName, MAX_PATH, "%s\\log_%04d_%02d_%s.txt",
-			directory_, st.wYear, st.wMonth, fileDirectory);
-
-		if (FAILED(hr))
-			return false;
-
-		auto& fout = logFiles_[fileDirectory];
-
-		fout.open(fileName, std::ios::out | std::ios::app);
-
-		return fout.is_open();
-	}
-
-	const char* GetLevelString(ELOG level)
-	{
-		switch (level)
-		{
-		case ELOG::DEBUG_LEVEL:
-			return "DEBUG";
-
-		case ELOG::ERROR_LEVEL:
-			return "ERROR";
-
-		case ELOG::SYSTEM_LEVEL:
-			return "SYSTEM";
-
-		default:
-			return "UNKNOWN";
-		}
-	}
-
 public:
 
 	Logger() = default;
@@ -200,6 +146,60 @@ public:
 			__debugbreak();
 		}
 	}
+
+private:
+
+	bool OpenLogFile(const char* fileDirectory)
+	{
+		if (!CreateDirectoryA(directory_, nullptr))
+		{
+			if (GetLastError() != ERROR_ALREADY_EXISTS)
+				return false;
+		}
+
+		char fileName[MAX_PATH] = {};
+
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+
+		HRESULT hr = StringCchPrintfA(fileName, MAX_PATH, "%s\\log_%04d_%02d_%s.txt",
+			directory_, st.wYear, st.wMonth, fileDirectory);
+
+		if (FAILED(hr))
+			return false;
+
+		auto& fout = logFiles_[fileDirectory];
+
+		fout.open(fileName, std::ios::out | std::ios::app);
+
+		return fout.is_open();
+	}
+
+	const char* GetLevelString(ELOG level)
+	{
+		switch (level)
+		{
+		case ELOG::DEBUG_LEVEL:
+			return "DEBUG";
+
+		case ELOG::ERROR_LEVEL:
+			return "ERROR";
+
+		case ELOG::SYSTEM_LEVEL:
+			return "SYSTEM";
+
+		default:
+			return "UNKNOWN";
+		}
+	}
+
+private:
+
+	std::unordered_map<std::string, std::ofstream> logFiles_;
+	char directory_[MAX_PATH] = {};
+	std::mutex lock_;
+	ELOG_MODE mode_ = ELOG_MODE::DEBUG_MODE;
+	std::atomic<unsigned int> logSequence_ = 0;
 };
 
 inline Logger g_Logger;

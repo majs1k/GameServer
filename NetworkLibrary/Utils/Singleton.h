@@ -12,16 +12,6 @@
 template <class T>
 class Singleton
 {
-private:
-
-	Singleton(const Singleton&);
-	Singleton& operator=(const Singleton&);
-
-protected:
-
-	Singleton() {}
-	~Singleton() {}
-
 public:
 
 	static T& Instance()
@@ -29,4 +19,14 @@ public:
 		static T instance;
 		return instance;
 	}
+
+protected:
+
+	Singleton() {}
+	~Singleton() {}
+
+private:
+
+	Singleton(const Singleton&);
+	Singleton& operator=(const Singleton&);
 };

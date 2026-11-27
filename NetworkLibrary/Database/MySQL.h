@@ -30,10 +30,6 @@ class MySQL
 		std::unique_ptr<sql::ResultSet> result;
 	};
 
-private:
-	sql::mysql::MySQL_Driver* driver_ = nullptr;
-	std::unique_ptr<sql::Connection> connection_;
-
 public:
 
 	MySQL() = default;
@@ -144,4 +140,8 @@ public:
 	{
 		return connection_ && connection_->isValid();
 	}
+
+private:
+	sql::mysql::MySQL_Driver* driver_ = nullptr;
+	std::unique_ptr<sql::Connection> connection_;
 };

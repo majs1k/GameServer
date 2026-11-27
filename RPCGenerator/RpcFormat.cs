@@ -101,7 +101,7 @@ class RpcStub
 {{
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet);
+    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
 {0}
 }};
 ";
@@ -124,11 +124,8 @@ public:
 
         public static string stubCppPacketProc =
 @"
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet)
+bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
 {{
-    unsigned short type;
-    *packet >> type;
-
     switch (type)
     {{{0}
     default:

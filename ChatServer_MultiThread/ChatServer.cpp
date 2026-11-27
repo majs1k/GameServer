@@ -20,11 +20,12 @@ void ChatServer_Multi::Player::Initialize(uint64_t sessionId)
 	isInitSector_ = false;
 }
 
-void ChatServer_Multi::Message::Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+void ChatServer_Multi::Message::Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type)
 {
 	sessionId_ = sessionId;
 	packet_ = packet;
 	protocol_ = protocol;
+	type_ = type;
 }
 
 ChatServer_Multi::ChatServer_Multi()
@@ -79,8 +80,11 @@ void ChatServer_Multi::OnRecv(uint64_t sessionId, Packet* packet)
 		player = it->second;
 	}
 
+	unsigned short type;
+	*packet >> type;
+
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET);
+	message->Initialize(sessionId, packet, CS_NETWORK_PACKET, type);
 	packet->AddRef();
 
 	messageQueue_[player->mapId_].Enqueue(message);

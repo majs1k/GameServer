@@ -21,8 +21,6 @@ public:
 	Redis(const Redis&) = delete;
 	Redis& operator=(const Redis&) = delete;
 
-public:
-
 	void Connect(std::string host, int port)
 	{
 		Disconnect();
@@ -50,6 +48,7 @@ public:
 		return context_ != nullptr && context_->err == 0;
 	}
 
+	/// TODO: ¼öÁ¤
 	bool Set(const std::string& key, const std::string& value, bool onlyNotExist = false, int expireSeconds = 0)
 	{
 		if (!IsConnected())

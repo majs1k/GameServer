@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <Windows.h>
+#include <fstream>
 
 #include "MySQL.h"
 
@@ -101,4 +102,19 @@ int main()
 
 	//std::string s = WStringToString(wstr);
 	//std::cout << s << std::endl;
+
+	/// ansi
+	std::ofstream fout1("test1.txt");
+	std::string ss = "한";
+	fout1 << ss << std::endl;
+
+	/// utf-8
+	/// 메모장에서 한글 사용시 기본 이 설정임
+	std::ofstream fout2("test2.txt");
+	fout2 << str << std::endl;
+
+	/// utf-16
+	/// 불가. 별도로 로케일 설정 필요함
+	std::wofstream fout3("test3.txt");
+	fout3 << L"한" << std::endl;
 }

@@ -50,6 +50,20 @@ private:
 
 public:
 
+	~LockFreeStack()
+	{
+		uint64_t cur = top_;
+
+		while (cur)
+		{
+			Node* topPtr = GetPtr(cur);
+			uint64_t next = topPtr->next_;
+
+			pool_<T>.Free(topPtr);
+			cur = next;
+		}
+	}
+
 	void Push(T value)
 	{
 		//Node* node = new Node();

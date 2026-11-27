@@ -36,8 +36,11 @@ template <class T>
 class MemoryPool
 {
 private:
+
 	struct Node
 	{
+	public:
+
 #ifdef DEBUG_MEMORYPOOL
 		void* underflow_ = nullptr;
 #endif
@@ -51,28 +54,21 @@ private:
 
 	struct AllocInfo
 	{
-		void* ptr_;
-		char fileName_[128];
-		int  lineNum_;
+	public:
 
 		AllocInfo(void* ptr, const char* fileName, int lineNum)
 			:ptr_(ptr), lineNum_(lineNum)
 		{
 			strcpy_s(fileName_, 128, fileName);
 		}
+
+		void* ptr_;
+		char fileName_[128];
+		int  lineNum_;
 	};
 
-	Node* top_;
-	int size_;
-	int capacity_;
-	bool isPlacementNew_;
-
-
-#ifdef DEBUG_MEMORYPOOL
-	std::list<AllocInfo> allocList_;
-#endif
-
 public:
+
 	MemoryPool(int size = 200, bool isPlacementNew = false)
 	{
 		top_ = nullptr;
@@ -238,6 +234,17 @@ public:
 	{
 		return size_;
 	}
+
+private:
+
+	Node* top_;
+	int size_;
+	int capacity_;
+	bool isPlacementNew_;
+
+#ifdef DEBUG_MEMORYPOOL
+	std::list<AllocInfo> allocList_;
+#endif
 };
 
 #ifdef DEBUG_MEMORYPOOL

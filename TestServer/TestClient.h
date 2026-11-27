@@ -1,9 +1,9 @@
 #pragma once
 #include "Network/LanClient.h"
 
+
 class TestClient : public LanClient
 {
-
 public:
 
 	void OnConnect() override;

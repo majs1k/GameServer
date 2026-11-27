@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <Windows.h>
 
-#define MEMORY_DETECTOR
+//#define MEMORY_DETECTOR
 
 
 class MemoryDetector
@@ -33,10 +33,6 @@ private:
 			strcpy_s(filename, 128, fileName);
 		};
 	};
-
-private:
-
-	std::list<AllocData*> list_;
 
 public:
 
@@ -84,6 +80,10 @@ public:
 
 		fclose(fp);
 	}
+
+private:
+
+	std::list<AllocData*> list_;
 };
 
 inline MemoryDetector g_MemoryDetector;
@@ -131,7 +131,5 @@ inline void operator delete[](void* ptr)
 
 
 #ifdef MEMORY_DETECTOR
-
 #define new new(__FILE__, __LINE__)
-
 #endif

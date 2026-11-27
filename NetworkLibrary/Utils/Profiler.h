@@ -47,13 +47,6 @@ private:
 
 	struct Sample
 	{
-		std::string name_;
-		int64_t totalTime_ = 0;
-		int64_t minTime_ = INT_MAX;
-		int64_t maxTime_ = 0;
-		int64_t call_ = 0;
-		LARGE_INTEGER startTime_;
-
 	public:
 
 		Sample(const std::string& name)
@@ -84,15 +77,17 @@ private:
 			maxTime_ = 0;
 			call_ = 0;
 		}
+
+		std::string name_;
+		int64_t totalTime_ = 0;
+		int64_t minTime_ = INT_MAX;
+		int64_t maxTime_ = 0;
+		int64_t call_ = 0;
+		LARGE_INTEGER startTime_;
 	};
 
 	struct Profile
 	{
-	private:
-
-		std::unordered_map<std::string, Sample*> profileMap_;
-		LARGE_INTEGER freq_;
-
 	public:
 
 		Profile(Profiler* profiler)
@@ -206,14 +201,12 @@ private:
 
 			fout.close();
 		}
+
+	private:
+
+		std::unordered_map<std::string, Sample*> profileMap_;
+		LARGE_INTEGER freq_;
 	};
-
-private:
-
-	std::vector<Profile*> profilers_;
-	std::thread commandThread_;
-	std::mutex lock_;
-	bool shutdown_ = false;
 
 public:
 
@@ -295,6 +288,13 @@ public:
 			}
 		}
 	}
+
+private:
+
+	std::vector<Profile*> profilers_;
+	std::thread commandThread_;
+	std::mutex lock_;
+	bool shutdown_ = false;
 };
 
 inline Profiler g_Profiler;
@@ -302,10 +302,6 @@ inline Profiler g_Profiler;
 // RAII
 class ProfileGuard
 {
-private:
-
-	std::string name_;
-
 public:
 
 	ProfileGuard(const std::string& name)
@@ -318,4 +314,8 @@ public:
 	{
 		g_Profiler.EndProfile(name_);
 	}
+
+private:
+
+	std::string name_;
 };

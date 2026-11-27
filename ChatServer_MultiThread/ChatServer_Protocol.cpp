@@ -17,6 +17,7 @@ void ChatServer_Multi::ProcessMessageQueue()
 		uint64_t sessionId = message->sessionId_;
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
+		ushort type = message->type_;
 		bool success;
 
 		procMessageCount_++;
@@ -26,7 +27,7 @@ void ChatServer_Multi::ProcessMessageQueue()
 		case CS_NETWORK_PACKET:
 		{
 			messageCount_CS_NETWORK_PACKET_++;
-			success = PacketProc(sessionId, packet);
+			success = PacketProc(sessionId, packet, type);
 
 			break;
 		}

@@ -4,11 +4,12 @@
 #include "Utils/Profiler.h"
 
 
-void LoginServer::Message::Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+void LoginServer::Message::Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type)
 {
 	sessionId_ = sessionId;
 	packet_ = packet;
 	protocol_ = protocol;
+	type_ = type;
 }
 
 LoginServer::LoginServer(std::string dbHost, std::string dbUser, std::string dbPassword, std::string dbSchema, std::string redisHost, int redisPort)
@@ -21,9 +22,6 @@ LoginServer::LoginServer(std::string dbHost, std::string dbUser, std::string dbP
 	mysql_.Connect(dbHost_, dbUser_, dbPassword_, dbSchema_);
 
 	CreateTable();
-
-	/// »ùÇÃ µ¥ÀÌÅÍ »ðÀÔ
-	//MakeDBSample();
 
 	redisHost_ = redisHost;
 	redisPort_ = redisPort;
@@ -68,8 +66,11 @@ void LoginServer::OnRelease(uint64_t sessionId)
 
 void LoginServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
+	unsigned short type;
+	*packet >> type;
+
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_LOGIN_SERVER);
+	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_LOGIN_SERVER, type);
 	packet->AddRef();
 
 	messageCount_++;
@@ -166,26 +167,4 @@ void LoginServer::CreateTable()
 		"last_login_at TIMESTAMP"
 		")"
 	);
-}
-
-void LoginServer::MakeDBSample()
-{
-	std::string query;
-
-	query =
-		"INSERT INTO users (user_id, email, nickname) VALUES ";
-
-	for (int idx = 1; idx <= 100'000; idx++)
-	{
-		if (idx > 1)
-			query += ", ";
-
-		query += "("
-			+ std::to_string(idx)
-			+ ", 'ID_" + std::to_string(idx)
-			+ "', 'NICK_" + std::to_string(idx)
-			+ "')";
-	}
-
-	mysql_.Execute(query);
 }

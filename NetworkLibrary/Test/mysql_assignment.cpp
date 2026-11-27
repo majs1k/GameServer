@@ -95,56 +95,6 @@ struct st_DBQUERY_MSG_ITEM_TRADE
 
 class DBServer
 {
-private:
-
-	struct Message
-	{
-		uint64_t sessionId_;
-		Packet* packet_;
-		ushort protocol_;
-
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
-		{
-			sessionId_ = sessionId;
-			packet_ = packet;
-			protocol_ = protocol;
-		}
-	};
-
-	HANDLE hDbWriteIOCP_;
-	std::vector<std::thread> dbWriteThread_;
-	int concurrentCount_ = 1;
-	int workerCount_ = 1;
-
-	MemoryPoolTls<Message> messagePool_;
-	LockFreeQueue<Message*> messageQueue_;
-	HANDLE messageEvent_;
-
-
-	std::thread producerThread1_;
-	std::thread producerThread2_;
-
-	std::atomic<int> messageCount_ = 0;
-	std::atomic<int> dbWriteCount_ = 0;
-
-	constexpr static int playerMax_ = 100000;
-	//constexpr static int itemMax_ = 10;
-	constexpr static int itemSlotMax_ = 10;
-	std::atomic<int> questIdSeed_ = 0;
-
-private:
-
-	MySQL mysql_;
-
-	enum class ItemTradeMode
-	{
-		Single = 1,
-		Multi = 2,
-		MultiTransaction = 3
-	};
-
-	std::atomic<ItemTradeMode> itemTradeMode_ = ItemTradeMode::Single;
-
 public:
 
 	void SetItemTradeMode(int mode)
@@ -749,6 +699,55 @@ public:
 		printf("dbWriteTPS         : %d\n", dbWriteCount);
 		printf("Mode			   : %d %s\n\n", mode, modeName);
 	}
+
+private:
+
+	struct Message
+	{
+		uint64_t sessionId_;
+		Packet* packet_;
+		ushort protocol_;
+
+		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+		{
+			sessionId_ = sessionId;
+			packet_ = packet;
+			protocol_ = protocol;
+		}
+	};
+
+	HANDLE hDbWriteIOCP_;
+	std::vector<std::thread> dbWriteThread_;
+	int concurrentCount_ = 1;
+	int workerCount_ = 1;
+
+	MemoryPoolTls<Message> messagePool_;
+	LockFreeQueue<Message*> messageQueue_;
+	HANDLE messageEvent_;
+
+	std::thread producerThread1_;
+	std::thread producerThread2_;
+
+	std::atomic<int> messageCount_ = 0;
+	std::atomic<int> dbWriteCount_ = 0;
+
+	constexpr static int playerMax_ = 100000;
+	//constexpr static int itemMax_ = 10;
+	constexpr static int itemSlotMax_ = 10;
+	std::atomic<int> questIdSeed_ = 0;
+
+private:
+
+	MySQL mysql_;
+
+	enum class ItemTradeMode
+	{
+		Single = 1,
+		Multi = 2,
+		MultiTransaction = 3
+	};
+
+	std::atomic<ItemTradeMode> itemTradeMode_ = ItemTradeMode::Single;
 };
 
 

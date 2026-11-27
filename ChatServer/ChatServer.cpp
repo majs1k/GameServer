@@ -20,11 +20,12 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 	isInitSector_ = false;
 }
 
-void ChatServer::Message::Initialize(uint64_t sessionId, Packet* packet, ushort protocol)
+void ChatServer::Message::Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type)
 {
 	sessionId_ = sessionId;
 	packet_ = packet;
 	protocol_ = protocol;
+	type_ = type;
 }
 
 ChatServer::ChatServer()
@@ -60,8 +61,10 @@ void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
 	// 로직 스레드에서 패킷 처리
 	// IO 스레드에서 처리하도록 수정 x (컨텐츠에서 동기화 문제 발생 가능)
+	unsigned short type;
+	*packet >> type;
 	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_CHAT_SERVER);
+	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_CHAT_SERVER, type);
 	packet->AddRef();
 
 	messageQueue_.Enqueue(message);

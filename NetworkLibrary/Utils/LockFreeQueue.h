@@ -67,6 +67,20 @@ public:
 		node->next_ = 0;
 	}
 
+	~LockFreeQueue()
+	{
+		uint64_t cur = front_;
+
+		while (cur)
+		{
+			Node* topPtr = GetPtr(cur);
+			uint64_t next = topPtr->next_;
+
+			pool_<T>.Free(topPtr);
+			cur = next;
+		}
+	}
+
 	void Enqueue(T value)
 	{
 		//Node* node = new Node();

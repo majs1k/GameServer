@@ -4,6 +4,7 @@
 #include "Utils/Profiler.h"
 #include <Windows.h>
 
+
 TestServer::TestServer()
 {
 	logicThread_ = std::thread(LogicThread, this);
@@ -146,9 +147,7 @@ void TestServer::Monitoring()
 	printf("Discon     : %d\n", disconnectCountTotal_.load());
 
 	printf("Accept TPS : %d\n", acceptCount);
-
-	printf("MessageQ   : %d\n\n", messageQueue_.Size());
-
+	printf("MessageQ   : %d\n", messageQueue_.Size());
 	printf("Recv   TPS : %d\n", recvMessageCount);
 	printf("Send   TPS : %d\n\n", sendMessageCount);
 

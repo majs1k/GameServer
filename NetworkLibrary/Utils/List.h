@@ -85,13 +85,8 @@ private:
 		}
 	};
 
-private:
-	Node* head_;
-	Node* tail_;
-
-	int size_;
-
 public:
+
 	List()
 	{
 		head_ = new Node();
@@ -235,4 +230,10 @@ public:
 				++it;
 		}
 	}
+
+private:
+
+	Node* head_;
+	Node* tail_;
+	int size_;
 };

@@ -20,16 +20,6 @@
 
 class TickController : public Singleton<TickController>
 {
-private:
-
-	DWORD frameStartTime_;
-	DWORD curTime_;
-	DWORD fpsStartTime_;
-	int deltaTime_;
-
-	int curFps_;
-	int frameCount_;
-
 public:
 
 	TickController()
@@ -88,4 +78,14 @@ public:
 			frameCount_ = 0;
 		}
 	}
+
+private:
+
+	DWORD frameStartTime_;
+	DWORD curTime_;
+	DWORD fpsStartTime_;
+	int deltaTime_;
+
+	int curFps_;
+	int frameCount_;
 };

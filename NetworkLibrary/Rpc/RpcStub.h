@@ -6,7 +6,7 @@ class RpcStub
 {
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet);
+    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
 
     virtual bool CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey);
     virtual bool SC_ResEnterChatServer(uint64_t sessionId, byte status, int64_t playerId);

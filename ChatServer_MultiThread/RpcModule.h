@@ -5,7 +5,6 @@
 #include "CommonProtocol.h"
 #include "Rpc/RpcProxy.h"
 
-// ChatServer 전용 프록시 전역객체
 inline RpcProxy g_RpcProxy;
 
 inline Packet& operator<<(Packet& packet, std::string& str)
@@ -13,7 +12,6 @@ inline Packet& operator<<(Packet& packet, std::string& str)
 	packet << static_cast<short>(str.size());
 
 	packet.Write(str.data(), static_cast<short>(str.size()));
-
 	return packet;
 }
 
@@ -25,7 +23,6 @@ inline Packet& operator>>(Packet& packet, std::string& str)
 	str.resize(size);
 
 	packet.Read(const_cast<char*>(str.data()), size);
-
 	return packet;
 }
 
@@ -35,7 +32,9 @@ inline Packet& operator<<(Packet& packet, std::vector<T>& vec)
 	packet << static_cast<short>(vec.size());
 
 	for (auto& v : vec)
+	{
 		packet << v;
+	}
 
 	return packet;
 }

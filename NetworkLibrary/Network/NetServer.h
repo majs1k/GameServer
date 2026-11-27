@@ -89,28 +89,38 @@ protected:
 	virtual void OnRelease(uint64_t sessionId) = 0;
 	virtual void OnRecv(uint64_t sessionId, Packet* packet) = 0;
 
+	bool shutdown_ = false;
+
 	// ============================================================================
 	// IOCP
 	// ============================================================================
 private:
 
-	SOCKET listenSocket_;
-	std::string serverIp_;
-	int serverPort_;
+	static unsigned int __stdcall WorkerThread(void* param);
+	void WorkerFunc();
+
 	HANDLE workerCompletionPort_;
 	std::vector<HANDLE> workerThread_;
-	HANDLE hAcceptThread_;
 	int concurrentCount_;
 	int workerCount_;
 
-	static unsigned int __stdcall WorkerThread(void* param);
-	void WorkerFunc();
+	HANDLE hAcceptThread_;
+	SOCKET listenSocket_;
+	std::string serverIp_;
+	int serverPort_;
 
 	constexpr static int PROTOCOL_SEND_PACKET = 1;
 
 	// ============================================================================
 	// Session
 	// ============================================================================
+private:
+
+	uint64_t GetSessionId(uint64_t sessionId);
+	int GetSessionIndex(uint64_t sessionId);
+	static void SchedulerThread(NetServer* server);
+	void CheckTimeout();
+
 private:
 
 	//std::unordered_map<__int64, Session*> sessionMap_;
@@ -130,11 +140,6 @@ protected:
 	int sessionMax_;
 	std::thread schedulerThread_;
 	constexpr static int TIMEOUT_MS = 40'000;
-
-	uint64_t GetSessionId(uint64_t sessionId);
-	int GetSessionIndex(uint64_t sessionId);
-	static void SchedulerThread(NetServer* server);
-	void CheckTimeout();
 
 	// ============================================================================
 	// Accept Thread
@@ -172,21 +177,19 @@ private:
 	// ============================================================================
 private:
 
-	HANDLE sendCompletionPort_;
-	std::vector<HANDLE> sendThreads_;
-
-	constexpr static int SEND_CONCURRENT_COUNT = 4;
-	constexpr static int SEND_WORKER_COUNT = 4;
-
 	static unsigned int __stdcall SendThread(void* param);
 	void SendFunc();
+
+	HANDLE sendCompletionPort_;
+	std::vector<HANDLE> sendThreads_;
+	constexpr static int SEND_CONCURRENT_COUNT = 4;
+	constexpr static int SEND_WORKER_COUNT = 4;
 
 	// ============================================================================
 	// Counter
 	// ============================================================================
 protected:
 
-	bool shutdown_ = false;
 	std::atomic<int> acceptCount_ = 0;
 	std::atomic<int> recvMessageCount_ = 0;
 	std::atomic<int> sendMessageCount_ = 0;
@@ -201,8 +204,8 @@ protected:
 public:
 
 	/// 더미에서 attack 안 켰을때 연결 종료 전 = 메세지 도착으로 확인 가능
-	std::unordered_map<uint64_t, int> debuggingMap_;
-	std::mutex debuggingLock_;
+	//std::unordered_map<uint64_t, int> debuggingMap_;
+	//std::mutex debuggingLock_;
 
 	/// 로그 사용 시 동기화 문제 추적 안될 때
 	//LockStack<int> debugIndexPool_;
@@ -210,10 +213,6 @@ public:
 	//// playerId -> sessionId
 	//std::map<int64_t, uint64_t> testset;
 
-	/// 안전하지 않은 로그인 서버 전용 함수
-	std::string GetSessionIp(uint64_t sessionId)
-	{
-		Session* session = sessions_[GetSessionIndex(sessionId)];
-		return session->ip_;
-	}
+	/// 안전하지 않은 로그인 서버 더미용 함수
+	std::string GetSessionIp(uint64_t sessionId);
 };

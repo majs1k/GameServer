@@ -33,13 +33,6 @@ private:
 
 	struct MemoryPool
 	{
-		Node* top_ = nullptr;
-		int size_ = 0;
-		Node* freeHead_ = nullptr;
-		Node* freeTail_ = nullptr;
-		int freeSize_ = 0;
-		MemoryPoolTls<T>* poolTls_ = nullptr;
-
 	public:
 
 		MemoryPool(MemoryPoolTls<T>* poolTls)
@@ -137,14 +130,14 @@ private:
 
 			return true;
 		}
+
+		Node* top_ = nullptr;
+		int size_ = 0;
+		Node* freeHead_ = nullptr;
+		Node* freeTail_ = nullptr;
+		int freeSize_ = 0;
+		MemoryPoolTls<T>* poolTls_ = nullptr;
 	};
-
-private:
-
-	std::vector<MemoryPool*> pools_{};
-	std::vector<Chunk> chunks_{};
-	std::mutex lock_{};
-	int capacity_ = 0;
 
 public:
 
@@ -265,4 +258,11 @@ private:
 
 		chunks_.push_back(chunk);
 	}
+
+private:
+
+	std::vector<MemoryPool*> pools_{};
+	std::vector<Chunk> chunks_{};
+	std::mutex lock_{};
+	int capacity_ = 0;
 };

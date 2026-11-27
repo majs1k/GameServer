@@ -75,17 +75,6 @@ inline MemoryPoolTls<Packet> packetPool_;
 
 class Packet
 {
-private:
-
-	char* buffer_ = nullptr;
-	int	capacity_ = PACKET_CAPACITY;
-	int writePos_ = 0;
-	int readPos_ = 0;
-	int headerSize_ = 0;
-	bool isError_ = false;
-	bool isEncoding_ = false;
-	std::atomic<int> refCount_ = 0;
-
 public:
 
 	Packet()
@@ -513,4 +502,15 @@ public:
 		readPos_ += size;
 		return size;
 	}
+
+private:
+
+	char* buffer_ = nullptr;
+	int	capacity_ = PACKET_CAPACITY;
+	int writePos_ = 0;
+	int readPos_ = 0;
+	int headerSize_ = 0;
+	bool isError_ = false;
+	bool isEncoding_ = false;
+	std::atomic<int> refCount_ = 0;
 };

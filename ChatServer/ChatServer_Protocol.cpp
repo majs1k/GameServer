@@ -1,6 +1,7 @@
 #include "ChatServer.h"
 #include "Utils/Logger.h"
 
+
 void ChatServer::ProcessMessageQueue()
 {
 	while (1)
@@ -14,6 +15,7 @@ void ChatServer::ProcessMessageQueue()
 		uint64_t sessionId = message->sessionId_;
 		Packet* packet = message->packet_;
 		ushort protocol = message->protocol_;
+		ushort type = message->type_;
 		bool success;
 
 		procMessageCount_++;
@@ -23,7 +25,7 @@ void ChatServer::ProcessMessageQueue()
 		case CS_NETWORK_PACKET_CHAT_SERVER:
 		{
 			messageCount_CS_NETWORK_PACKET_++;
-			success = PacketProc(sessionId, packet);
+			success = PacketProc(sessionId, packet, type);
 			break;
 		}
 

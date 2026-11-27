@@ -47,7 +47,8 @@ private:
 	LockFreeQueue<Message*> messageQueue_;
 	MemoryPoolTls<Message> messagePool_;
 
-	std::thread monitorThread_;
 	static void monitorThread(TestServer* server);
 	void Monitoring();
+
+	std::thread monitorThread_;
 };

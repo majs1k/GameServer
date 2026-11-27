@@ -2,8 +2,8 @@
 //
 // 링버퍼
 //
-// 리사이즈 필요시 추후 구현
 // 예외처리 최소화. 멀티스레드 환경에서 주의
+// SPSC 구현
 // 
 // TCP의 L4 버퍼 크기는 충분히 크다. (세션마다 할당되어 있음)
 // L4 송신버퍼 7만~
@@ -16,13 +16,6 @@
 
 class RingBuffer
 {
-private:
-
-	char* buffer_;
-	int capacity_;
-	int writePos_;
-	int readPos_;
-
 public:
 
 	RingBuffer(int bufferSize)
@@ -206,4 +199,11 @@ public:
 		writePos_ = (writePos_ + size) % capacity_;
 		return size;
 	}
+
+private:
+
+	char* buffer_;
+	int capacity_;
+	int writePos_;
+	int readPos_;
 };

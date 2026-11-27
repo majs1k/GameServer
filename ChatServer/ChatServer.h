@@ -23,7 +23,6 @@ private:
 		Nickname nickname_;
 		bool isLogin_;
 		bool isInitSector_;
-		uint64_t lastRecvTime_;
 		// 0 ~ 49
 		unsigned short sectorX_;
 		unsigned short sectorY_;
@@ -36,9 +35,10 @@ private:
 	{
 		uint64_t sessionId_;
 		Packet* packet_;
-		ushort protocol_;
+		unsigned short protocol_;
+		unsigned short type_;
 
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol);
+		void Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type = 0);
 	};
 
 	enum PROTOCOL

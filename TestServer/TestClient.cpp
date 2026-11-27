@@ -1,14 +1,13 @@
 #include "TestClient.h"
 #include "Utils/Packet.h"
 
+
 void TestClient::OnConnect()
 {
-
 }
 
 void TestClient::OnRelease()
 {
-
 }
 
 void TestClient::OnRecv(Packet* packet)

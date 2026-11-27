@@ -20,9 +20,10 @@ private:
 	{
 		uint64_t sessionId_;
 		Packet* packet_;
-		ushort protocol_;
+		unsigned short protocol_;
+		unsigned short type_;
 
-		void Initialize(uint64_t sessionId, Packet* packet, ushort protocol);
+		void Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type = 0);
 	};
 
 	enum PROTOCOL
@@ -93,7 +94,6 @@ private:
 public:
 
 	void CreateTable();
-	void MakeDBSample();
 
 private:
 
