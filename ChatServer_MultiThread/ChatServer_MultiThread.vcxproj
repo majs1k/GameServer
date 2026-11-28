@@ -133,7 +133,7 @@
     <ClInclude Include="RpcModule.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ChatConfig.json" />
+    <None Include="chatconfig.json" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatServer.cpp" />

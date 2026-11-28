@@ -213,36 +213,6 @@ private:
 };
 
 
-//class GameRoomManager
-//{
-//private:
-//
-//	std::vector<GameRoom*> rooms_;
-//
-//public:
-//
-//	void Create(Player* player1, Player* player2)
-//	{
-//		GameRoom* room = new GameRoom(player1, player2);
-//
-//		rooms_.push_back(room);
-//
-//		room->StartGame();
-//	}
-//
-//	void Remove(GameRoom* room)
-//	{
-//		auto it = std::find(rooms_.begin(), rooms_.end(), room);
-//
-//		if (it == rooms_.end())
-//			return;
-//
-//		delete room;
-//
-//		rooms_.erase(it);
-//	}
-//};
-
 class GameRoomManager
 {
 private:

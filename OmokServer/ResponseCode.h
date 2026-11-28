@@ -1,14 +1,10 @@
 #pragma once
 
-enum class RESPONSE_CODE : short
+enum RESPONSE_CODE
 {
 	SUCCESS,
-
 	ALREADY_EXISTS,
-
 	LOGIN_FAILED,
-
+	// 필요없음
 	INPUT_LENGTH_OVER,
-
-	DB_ERROR
 };

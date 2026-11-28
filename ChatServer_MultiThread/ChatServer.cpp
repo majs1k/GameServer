@@ -20,17 +20,10 @@ void ChatServer_Multi::Player::Initialize(uint64_t sessionId)
 	isInitSector_ = false;
 }
 
-void ChatServer_Multi::Message::Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type)
-{
-	sessionId_ = sessionId;
-	packet_ = packet;
-	protocol_ = protocol;
-	type_ = type;
-}
-
 ChatServer_Multi::ChatServer_Multi()
 {
-	g_RpcProxy.serverProxy_ = this;
+	proxy_.owner_ = this;
+	dispatcher_.stub_ = this;
 
 	for (int i = 0; i < MAP_COUNT; i++)
 	{
@@ -67,27 +60,27 @@ void ChatServer_Multi::OnRelease(uint64_t sessionId)
 
 void ChatServer_Multi::OnRecv(uint64_t sessionId, Packet* packet)
 {
-	Player* player;
+	//Player* player;
 
-	{
-		std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
+	//{
+	//	std::lock_guard<std::mutex> lock(sessionIdToPlayerLock_);
 
-		auto it = sessionIdToPlayer_.find(sessionId);
+	//	auto it = sessionIdToPlayer_.find(sessionId);
 
-		if (it == sessionIdToPlayer_.end())
-			return;
+	//	if (it == sessionIdToPlayer_.end())
+	//		return;
 
-		player = it->second;
-	}
+	//	player = it->second;
+	//}
 
-	unsigned short type;
-	*packet >> type;
+	//unsigned short type;
+	//*packet >> type;
 
-	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET, type);
-	packet->AddRef();
+	//Message* message = messagePool_.Alloc();
+	//message->Initialize(sessionId, packet, CS_NETWORK_PACKET, type);
+	//packet->AddRef();
 
-	messageQueue_[player->mapId_].Enqueue(message);
+	//messageQueue_[player->mapId_].Enqueue(message);
 }
 
 void ChatServer_Multi::LogicThread(ChatServer_Multi* server, int mapId)

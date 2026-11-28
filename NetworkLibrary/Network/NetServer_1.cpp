@@ -83,11 +83,13 @@ NetServer::NetServer()
 	}
 
 	schedulerThread_ = std::thread(SchedulerThread, this);
+	logicThread_ = std::thread(LogicThread, this);
 }
 
 NetServer::~NetServer()
 {
 	WSACleanup();
+	logicThread_.join();
 
 	schedulerThread_.join();
 }
@@ -234,6 +236,9 @@ bool NetServer::Start(std::string ip, int port, int sessionMax, int concurrentCo
 
 	hAcceptThread_ = (HANDLE)_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr);
 
+	dbReadCompletionPort_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
+	dbReadThread_ = std::thread(DbReadThread, this);
+
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "server start");
 	return true;
 }
@@ -287,6 +292,9 @@ void NetServer::Stop()
 
 	// IOCP ªË¡¶
 	CloseHandle(workerCompletionPort_);
+
+	CloseHandle(dbReadCompletionPort_);
+	dbReadThread_.join();
 
 	LOG("NETWORK", ELOG::SYSTEM_LEVEL, "server stop");
 }

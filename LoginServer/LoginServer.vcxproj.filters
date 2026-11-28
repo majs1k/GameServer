@@ -29,9 +29,6 @@
     <ClCompile Include="LoginServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LoginServer_Protocol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LoginServer_Rpc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -46,6 +43,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="LoginConfig.json" />
+    <None Include="loginconfig.json" />
   </ItemGroup>
 </Project>

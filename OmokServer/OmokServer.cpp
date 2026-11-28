@@ -10,25 +10,24 @@ OmokServer::OmokServer()
 {
 	logicThread_ = std::thread(LogicThread, this);
 
-	dbThread_ = std::thread(DatabaseThread, this);
-
-
 	matchMaker_.Initialize(&roomManager_);
-
-	roomManager_.SetPlayerManager(&playerManager_);
-
-
-	db_.Connect(config.dbHost, config.dbUser, config.dbPassword, config.dbSchema);
-
 
 	g_RpcProxy->server_ = this;
 
-	g_DbProxy.dbReqQueue_ = &dbReqQueue_;
 
+	auto stmt = database_->Prepare(
+		"CREATE TABLE IF NOT EXISTS players("
+		"player_id INT AUTO_INCREMENT PRIMARY KEY,"
+		"user_id INT NOT NULL UNIQUE,"
+		"player_name VARCHAR(30) NOT NULL UNIQUE,"
+		"money INT NOT NULL DEFAULT 10000,"
+		"win INT NOT NULL DEFAULT 0,"
+		"lose INT NOT NULL DEFAULT 0,"
+		"rating INT NOT NULL DEFAULT 1000,"
+		"profile_icon_id INT NOT NULL DEFAULT 0"
+		");");
 
-	userRepository_.Initialize(&db_);
-	playerRepository_.Initialize(&db_);
-	inventoryRepository_.Initialize(&db_);
+	stmt->execute();
 }
 
 OmokServer::~OmokServer()
@@ -38,24 +37,16 @@ OmokServer::~OmokServer()
 
 bool OmokServer::OnConnectionRequest(const std::string& ip, int port)
 {
-	if (sessionCount_ >= sessionMax_)
-	{
-		LOG(L"[Network] session limit over");
-
-		return false;
-	}
-
 	return true;
 }
 
 void OmokServer::OnAccept(uint64_t sessionId)
 {
-
 }
 
 void OmokServer::OnRelease(uint64_t sessionId)
 {
-	Player* player = playerManager_.GetPlayerBySessionId(sessionId);
+	Player* player = sessionId;
 
 	if (player == nullptr)
 		return;
@@ -77,10 +68,6 @@ void OmokServer::OnRelease(uint64_t sessionId)
 
 void OmokServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
-	// 로직 스레드에서 패킷 처리
-	logicThreadMQ_.Enqueue({ sessionId, packet });
-
-
 }
 
 void OmokServer::LogicThread(OmokServer* server)
@@ -88,8 +75,6 @@ void OmokServer::LogicThread(OmokServer* server)
 	while (!server->shutdown_)
 	{
 		server->ProcessMQ();
-
-		server->ProcessDbResQueue();
 
 		server->Update();
 

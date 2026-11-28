@@ -1,50 +1,6 @@
 #include "OmokServer.h"
 #include "RpcModule.h"
 
-bool OmokServer::ReqUserRegister(__int64 sessionId, std::string& loginId, std::string& password)
-{
-	// 길이 제한
-	if (loginId.length() > 20 || password.length() > 20)
-	{
-		RESPONSE_CODE c = RESPONSE_CODE::INPUT_LENGTH_OVER;
-		g_RpcProxy.ResUserRegister(sessionId, c);
-
-		return true;
-	}
-
-	g_DbProxy.ReqUserRegisterDB(sessionId, loginId, password);
-
-	return true;
-}
-
-bool OmokServer::ReqUserLogin(__int64 sessionId, std::string& loginId, std::string& password)
-{
-	if (loginId.length() > 20 || password.length() > 20)
-	{
-		RESPONSE_CODE c = RESPONSE_CODE::INPUT_LENGTH_OVER;
-		g_RpcProxy.ResUserRegister(sessionId, c);
-
-		return true;
-	}
-
-	g_DbProxy.ReqUserLoginDB(sessionId, loginId, password);
-
-	return true;
-}
-
-bool OmokServer::ReqPlayerRegister(__int64 sessionId, int userId, std::string& playerName)
-{
-	g_DbProxy.ReqPlayerRegisterDB(sessionId, userId, playerName);
-
-	return true;
-}
-
-bool OmokServer::ReqPlayerConnection(__int64 sessionId, int userId)
-{
-	g_DbProxy.ReqPlayerConnectionDB(sessionId, userId);
-
-	return true;
-}
 
 bool OmokServer::ReqEnterLobby(__int64 sessionId)
 {
@@ -55,7 +11,6 @@ bool OmokServer::ReqEnterLobby(__int64 sessionId)
 
 	player->state_ = PLAYER_STATE::LOBBY;
 
-
 	// 플레이어에게 로비 플레이어들 정보 송신
 	for (auto& p : playerManager_.GetPlayers())
 	{
@@ -63,8 +18,6 @@ bool OmokServer::ReqEnterLobby(__int64 sessionId)
 
 		g_RpcProxy.ResEnterLobby(sessionId, other);
 	}
-
-	PlayerInfo info = player->ToInfo();
 
 	// 다른 플레이어들에게도 입장 알림
 	for (auto& p : playerManager_.GetPlayers())

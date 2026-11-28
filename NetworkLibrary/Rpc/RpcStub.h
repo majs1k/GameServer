@@ -1,12 +1,13 @@
 #pragma once
 #include <atomic>
-#include "../Utils/Packet.h"
 
 class RpcStub
 {
+    friend class RpcDispatcher;
+
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
+    virtual ~RpcStub() = default;
 
     virtual bool CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey);
     virtual bool SC_ResEnterChatServer(uint64_t sessionId, byte status, int64_t playerId);
@@ -18,13 +19,15 @@ public:
     virtual bool CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessionKey);
     virtual bool SC_ResLogin(uint64_t sessionId, int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort);
 
-    std::atomic<int> messageCount_CS_ReqEnterChatServer_;
-    std::atomic<int> messageCount_SC_ResEnterChatServer_;
-    std::atomic<int> messageCount_CS_ReqSectorMove_;
-    std::atomic<int> messageCount_SC_ResSectorMove_;
-    std::atomic<int> messageCount_CS_ReqChat_;
-    std::atomic<int> messageCount_SC_ResChat_;
-    std::atomic<int> messageCount_CS_ReqHeartbeat_;
-    std::atomic<int> messageCount_CS_ReqLogin_;
-    std::atomic<int> messageCount_SC_ResLogin_;
+protected:
+
+    std::atomic<int> messageCount_CS_ReqEnterChatServer_{0};
+    std::atomic<int> messageCount_SC_ResEnterChatServer_{0};
+    std::atomic<int> messageCount_CS_ReqSectorMove_{0};
+    std::atomic<int> messageCount_SC_ResSectorMove_{0};
+    std::atomic<int> messageCount_CS_ReqChat_{0};
+    std::atomic<int> messageCount_SC_ResChat_{0};
+    std::atomic<int> messageCount_CS_ReqHeartbeat_{0};
+    std::atomic<int> messageCount_CS_ReqLogin_{0};
+    std::atomic<int> messageCount_SC_ResLogin_{0};
 };

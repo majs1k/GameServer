@@ -1,14 +1,14 @@
 #pragma once
 #include <list>
 #include <unordered_map>
-#include <thread>
 
 #include "Network/NetServer.h"
 #include "Utils/Packet.h"
-#include "Utils/LockFreeQueue.h"
 #include "Utils/MemoryPool.h"
+
 #include "CommonProtocol.h"
 #include "RPC/RpcStub.h"
+#include "Rpc/RpcProxy.h"
 
 
 class ChatServer : public NetServer, public RpcStub
@@ -31,31 +31,11 @@ private:
 		void Initialize(uint64_t sessionId);
 	};
 
-	struct Message
-	{
-		uint64_t sessionId_;
-		Packet* packet_;
-		unsigned short protocol_;
-		unsigned short type_;
-
-		void Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type = 0);
-	};
-
-	enum PROTOCOL
-	{
-		CS_NETWORK_PACKET_CHAT_SERVER = 0,
-		IN_CREATE_PLAYER = 1,
-		IN_REMOVE_PLAYER = 2,
-	};
-
 public:
 
 	ChatServer();
 	~ChatServer();
 
-	// ===================================================================================== //
-	// NetServer virtual func
-	// ===================================================================================== //
 private:
 
 	bool OnConnectionRequest(const std::string& ip, int port) override;
@@ -68,20 +48,15 @@ private:
 	// ===================================================================================== //
 private:
 
-	static void LogicThread(ChatServer* server);
 	static void MonitorThread(ChatServer* server);
 	void Monitoring();
 
-	std::thread logicThread_;
 	std::thread monitorThread_;
 
 	// ===================================================================================== //
-	// Message & Player
+	// Player
 	// ===================================================================================== //
 private:
-
-	MemoryPoolTls<Message> messagePool_;
-	LockFreeQueue<Message*> messageQueue_;
 
 	MemoryPool<Player> playerPool_;
 	std::unordered_map<uint64_t, Player*> sessionIdToPlayer_;
@@ -100,14 +75,40 @@ private:
 	// ===================================================================================== //
 private:
 
-	void ProcessMessageQueue();
+	enum PROTOCOL
+	{
+		IN_CREATE_PLAYER = 1,
+		IN_REMOVE_PLAYER = 2,
+	};
+
+	virtual bool OnRecvPacket(uint64_t sessionId, Packet* packet, ushort protocol)
+	{
+		switch (protocol)
+		{
+
+		case IN_CREATE_PLAYER:
+
+			messageCount_SS_CreatePlayer_++;
+			return IN_CreatePlayer(sessionId);
+			break;
+
+		case IN_REMOVE_PLAYER:
+
+			messageCount_SS_RemovePlayer_++;
+			return IN_RemovePlayer(sessionId);
+			break;
+
+		default:
+
+			__debugbreak();
+		}
+	}
+
 	void CreatePlayer(uint64_t sessionId);
 	void RemovePlayer(uint64_t sessionId);
-	bool SS_CreatePlayer(uint64_t sessionId);
-	bool SS_RemovePlayer(uint64_t sessionId);
+	bool IN_CreatePlayer(uint64_t sessionId);
+	bool IN_RemovePlayer(uint64_t sessionId);
 
-	std::atomic<int> procMessageCount_ = 0;
-	std::atomic<int> messageCount_CS_NETWORK_PACKET_ = 0;
 	std::atomic<int> messageCount_SS_CreatePlayer_ = 0;
 	std::atomic<int> messageCount_SS_RemovePlayer_ = 0;
 	std::atomic<int> dupLoginCountTotal_ = 0;
@@ -121,4 +122,7 @@ private:
 	bool CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY) override;
 	bool CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat) override;
 	bool CS_ReqHeartbeat(uint64_t sessionId) override;
+
+	/// 새로 정의된 타입을 알아야해서 여기서 정의
+	RpcProxy proxy_;
 };

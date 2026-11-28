@@ -21,18 +21,24 @@
 #include <cppconn/resultset.h>
 #include <cppconn/exception.h>
 
+#include "../Utils/ConfigLoader.h"
+
+
+struct QueryResult
+{
+	// 선언 순서 중요!
+	std::unique_ptr<sql::Statement> statement;
+	std::unique_ptr<sql::ResultSet> result;
+};
+
 class MySQL
 {
-	struct QueryResult
-	{
-		// 선언 순서 중요!
-		std::unique_ptr<sql::Statement> statement;
-		std::unique_ptr<sql::ResultSet> result;
-	};
-
 public:
 
-	MySQL() = default;
+	MySQL()
+	{
+		Connect(config.dbHost, config.dbUser, config.dbPassword, config.dbSchema);
+	}
 
 	~MySQL()
 	{
@@ -42,6 +48,10 @@ public:
 		}
 	}
 
+	MySQL(const MySQL&) = delete;
+	MySQL& operator=(const MySQL&) = delete;
+
+	/// TODO: 재연결 구현
 	void Connect(const std::string& host, const std::string& user, const std::string& password, const std::string& schema)
 	{
 		try
@@ -144,4 +154,31 @@ public:
 private:
 	sql::mysql::MySQL_Driver* driver_ = nullptr;
 	std::unique_ptr<sql::Connection> connection_;
+};
+
+
+class MySQLTls
+{
+public:
+
+	MySQL& LocalMySQL()
+	{
+		static thread_local MySQL mysql;
+		return mysql;
+	}
+
+	void Execute(const std::string& query)
+	{
+		LocalMySQL().Execute(query);
+	}
+
+	void ExecuteMulti(const std::string& query)
+	{
+		LocalMySQL().ExecuteMulti(query);
+	}
+
+	QueryResult ExecuteQuery(const std::string& query)
+	{
+		return LocalMySQL().ExecuteQuery(query);
+	}
 };

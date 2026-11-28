@@ -1,13 +1,10 @@
-﻿using System;
+﻿
+using System;
 
 namespace PacketGenerator
 {
     class RpcFormat
     {
-        // ============================================================
-        // Proxy
-        // ============================================================
-
         public static string proxyHeader =
 @"#pragma once
 #include <vector>
@@ -18,20 +15,16 @@ class NetServer;
 class RpcProxy
 {{
 public:
-
-    NetServer* serverProxy_;
-
-public:
 {0}
+
+    NetServer* owner_;
 }};
 ";
 
-        // Header에는 함수 선언만
         public static string proxyHeaderFunc =
 @"
     void {0}(uint64_t sessionId{1});";
 
-        // CPP에 들어갈 실제 구현
         public static string proxyCppFunc =
 @"
 void RpcProxy::{0}(uint64_t sessionId{1})
@@ -42,7 +35,7 @@ void RpcProxy::{0}(uint64_t sessionId{1})
     *packet << static_cast<unsigned short>({2});
     *packet{3};
 
-    serverProxy_->SendPacket(sessionId, packet);
+    owner_->SendPacket(sessionId, packet);
 
     packet->Free();
 }}
@@ -59,17 +52,12 @@ void RpcProxy::{0}(uint64_t sessionId{1})
         public static string shiftLeft =
 @" << {0}";
 
-
-
-        // 벡터 버전 함수 선언
         public static string proxyHeaderFuncVector =
-        @"
+@"
     void {0}(std::vector<uint64_t>& sessionIds{1});";
 
-
-        // 벡터 버전 함수 구현
         public static string proxyCppFuncVector =
-        @"
+@"
 void RpcProxy::{0}(std::vector<uint64_t>& sessionIds{1})
 {{
     Packet* packet = packetPool_.Alloc();
@@ -79,30 +67,29 @@ void RpcProxy::{0}(std::vector<uint64_t>& sessionIds{1})
     *packet{3};
 
     for (auto& sessionId : sessionIds)
-	{{
-		serverProxy_->SendPacket(sessionId, packet);
-	}}
+    {{
+        owner_->SendPacket(sessionId, packet);
+    }}
 
     packet->Free();
 }}
 ";
 
-
-        // ============================================================
-        // Stub Header
-        // ============================================================
-
         public static string stubHeader =
-        @"#pragma once
+@"#pragma once
 #include <atomic>
-#include ""../Utils/Packet.h""
 
 class RpcStub
 {{
+    friend class RpcDispatcher;
+
 public:
 
-    bool PacketProc(uint64_t sessionId, Packet* packet, unsigned short type);
+    virtual ~RpcStub() = default;
 {0}
+
+protected:
+{1}
 }};
 ";
 
@@ -112,19 +99,44 @@ public:
 
         public static string stubHeaderMessageCount =
 @"
-    std::atomic<int> messageCount_{0}_;";
-
-        // ============================================================
-        // Stub cpp
-        // ============================================================
+    std::atomic<int> messageCount_{0}_{{0}};";
 
         public static string stubCppHeader =
 @"#include ""RpcStub.h""
 ";
 
-        public static string stubCppPacketProc =
+        public static string stubCppFunc =
 @"
-bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type)
+bool RpcStub::{0}(uint64_t sessionId{1})
+{{
+    return true;
+}}
+";
+
+        public static string dispatcherHeader =
+@"#pragma once
+#include ""../Utils/Packet.h""
+
+class RpcStub;
+
+class RpcDispatcher
+{{
+public:
+
+    bool DispatchPacket(uint64_t sessionId, Packet* packet, unsigned short type);
+
+    RpcStub* stub_;
+}};
+";
+
+        public static string dispatcherCppHeader =
+@"#include ""RpcDispatcher.h""
+#include ""RpcStub.h""
+";
+
+        public static string dispatcherCppDispatchPacket =
+@"
+bool RpcDispatcher::DispatchPacket(uint64_t sessionId, Packet* packet, unsigned short type)
 {{
     switch (type)
     {{{0}
@@ -136,11 +148,11 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type
 }}
 ";
 
-        public static string stubPacketProcCase =
-        @"
+        public static string dispatcherDispatchPacketCase =
+@"
     case {0}:
     {{
-        messageCount_{3}_++;
+        stub_->messageCount_{3}_++;
 
 {1}
         *packet{2};
@@ -148,19 +160,10 @@ bool RpcStub::PacketProc(uint64_t sessionId, Packet* packet, unsigned short type
         if (packet->IsError())
             return false;
 
-        return {4}(sessionId{5});
+        return stub_->{4}(sessionId{5});
     }}";
 
         public static string shiftRight =
 @" >> {0}";
-
-        // 각 RPC 함수의 기본 구현
-        public static string stubCppFunc =
-@"
-bool RpcStub::{0}(uint64_t sessionId{1})
-{{
-    return true;
-}}
-";
     }
 }

@@ -7,8 +7,6 @@
 
 void NetServer::RecvPost(Session* session)
 {
-	PRO("hello");
-
 	ZeroMemory(&session->recvOverlapped_.overlapped_, sizeof(WSAOVERLAPPED));
 
 	WSABUF wsaBuf[2];
@@ -125,7 +123,25 @@ void NetServer::CompleteRecv(Session* session, int numOfBytes)
 		}
 
 		recvMessageCount_++;
-		OnRecv(session->sessionId_, packet);
+
+		/// TODO: ¼öÁ¤
+		//OnRecv(session->sessionId_, packet);
+		unsigned short type;
+		*packet >> type;
+
+		if (threadType_ == THREAD_TYPE::SINGLE)
+		{
+			Message* message = messagePool_.Alloc();
+			message->Initialize(session->sessionId_, packet, NETWORK_PACKET_PROTOCOL, type);
+			packet->AddRef();
+
+			messageQueue_.Enqueue(message);
+		}
+		else if (threadType_ == THREAD_TYPE::MULTI)
+		{
+			ProcessPacket(session->sessionId_, packet, NETWORK_PACKET_PROTOCOL, type);
+		}
+
 		packet->Free();
 	}
 

@@ -9,8 +9,8 @@ class GameRoom;
 class MatchMaker
 {
 private:
-	std::vector<Player*> matchQueue_;
 
+	std::vector<Player*> matchQueue_;
 	GameRoomManager* roomManager_;
 
 public:

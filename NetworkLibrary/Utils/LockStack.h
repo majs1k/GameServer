@@ -10,30 +10,20 @@ public:
 
 	void Push(T value)
 	{
-		lock_.lock();
+		std::lock_guard<std::mutex> lock(lock_);
 
 		stack_.push(value);
-
-		lock_.unlock();
 	}
 
 	bool Pop(T& value)
 	{
-		lock_.lock();
+		std::lock_guard<std::mutex> lock(lock_);
 
 		if (stack_.empty())
-		{
-			lock_.unlock();
-
 			return false;
-		}
-
+		
 		value = stack_.top();
-
 		stack_.pop();
-
-		lock_.unlock();
-
 		return true;
 	}
 

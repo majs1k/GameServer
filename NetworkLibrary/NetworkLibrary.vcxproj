@@ -119,8 +119,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>
-      </AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc;C:\Study\hiredis-master;C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>

@@ -20,25 +20,16 @@ void ChatServer::Player::Initialize(uint64_t sessionId)
 	isInitSector_ = false;
 }
 
-void ChatServer::Message::Initialize(uint64_t sessionId, Packet* packet, unsigned short protocol, unsigned short type)
-{
-	sessionId_ = sessionId;
-	packet_ = packet;
-	protocol_ = protocol;
-	type_ = type;
-}
-
 ChatServer::ChatServer()
 {
-	g_RpcProxy.serverProxy_ = this;
+	proxy_.owner_ = this;
+	dispatcher_.stub_ = this;
 
-	logicThread_ = std::thread(LogicThread, this);
 	monitorThread_ = std::thread(MonitorThread, this);
 }
 
 ChatServer::~ChatServer()
 {
-	logicThread_.join();
 	monitorThread_.join();
 }
 
@@ -59,23 +50,6 @@ void ChatServer::OnRelease(uint64_t sessionId)
 
 void ChatServer::OnRecv(uint64_t sessionId, Packet* packet)
 {
-	// 로직 스레드에서 패킷 처리
-	// IO 스레드에서 처리하도록 수정 x (컨텐츠에서 동기화 문제 발생 가능)
-	unsigned short type;
-	*packet >> type;
-	Message* message = messagePool_.Alloc();
-	message->Initialize(sessionId, packet, CS_NETWORK_PACKET_CHAT_SERVER, type);
-	packet->AddRef();
-
-	messageQueue_.Enqueue(message);
-}
-
-void ChatServer::LogicThread(ChatServer* server)
-{
-	while (!server->shutdown_)
-	{
-		server->ProcessMessageQueue();
-	}
 }
 
 void ChatServer::MonitorThread(ChatServer* server)

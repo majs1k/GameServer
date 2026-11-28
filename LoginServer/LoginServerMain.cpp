@@ -5,7 +5,7 @@
 #include "Utils/Logger.h"
 #include "Utils/Profiler.h"
 
-#define CONFIG_FILENAME			L"LoginConfig.json"
+#define CONFIG_FILENAME			L"loginconfig.json"
 
 int main()
 {
@@ -13,7 +13,7 @@ int main()
 	ConfigLoader::Instance().Load(CONFIG_FILENAME);
 	LOG_INIT("./Log", ELOG_MODE::ERROR_MODE);
 
-	LoginServer server{ config.dbHost, config.dbUser, config.dbPassword, config.dbSchema , config.redisHost, config.redisPort};
+	LoginServer server;
 	server.Start(config.ip, config.port, config.sessionMax, config.concurrentCount, config.workerCount);
 
 	while (1)

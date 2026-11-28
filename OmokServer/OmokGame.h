@@ -15,7 +15,6 @@ public:
 	static constexpr int BOARD_SIZE = 15;
 	static constexpr int MAX_TURN_TIME = 30;
 
-
 private:
 
 	STONE board_[BOARD_SIZE][BOARD_SIZE];

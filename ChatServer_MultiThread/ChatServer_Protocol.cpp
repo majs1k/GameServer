@@ -2,78 +2,6 @@
 #include "RpcModule.h"
 
 
-void ChatServer_Multi::ProcessMessageQueue()
-{
-	while (1)
-	{
-		Message* message;
-
-		/// 해당 맵의 메세지 처리
-		bool ret = messageQueue_[tls_MapId_].Dequeue(message);
-
-		if (ret == false)
-			break;
-
-		uint64_t sessionId = message->sessionId_;
-		Packet* packet = message->packet_;
-		ushort protocol = message->protocol_;
-		ushort type = message->type_;
-		bool success;
-
-		procMessageCount_++;
-
-		switch (protocol)
-		{
-		case CS_NETWORK_PACKET:
-		{
-			messageCount_CS_NETWORK_PACKET_++;
-			success = PacketProc(sessionId, packet, type);
-
-			break;
-		}
-
-		case IN_CREATE_PLAYER:
-
-			messageCount_SS_CreatePlayer_++;
-			success = SS_CreatePlayer(sessionId);
-			break;
-
-		case IN_REMOVE_PLAYER:
-
-			messageCount_SS_RemovePlayer_++;
-			success = SS_RemovePlayer(sessionId);
-			break;
-
-		case SS_SECTOR_MOVE:
-
-			success = SS_ReqSectorMove(sessionId, packet);
-			break;
-
-		case SS_CHAT:
-
-			success = SS_ReqChat(sessionId, packet);
-			break;
-
-		default:
-
-			__debugbreak();
-		}
-
-		if (!success)
-		{
-			Disconnect(sessionId);
-		}
-
-		if (packet != nullptr)
-		{
-			packet->Free();
-		}
-
-		messagePool_.Free(message);
-	}
-}
-
-
 void ChatServer_Multi::CreatePlayer(uint64_t sessionId)
 {
 	Message* message = messagePool_.Alloc();
@@ -105,7 +33,7 @@ void ChatServer_Multi::RemovePlayer(uint64_t sessionId)
 	messageQueue_[player->mapId_].Enqueue(message);
 }
 
-bool ChatServer_Multi::SS_CreatePlayer(uint64_t sessionId)
+bool ChatServer_Multi::IN_CreatePlayer(uint64_t sessionId)
 {
 	Player* player = playerPool_.Alloc();
 
@@ -120,7 +48,7 @@ bool ChatServer_Multi::SS_CreatePlayer(uint64_t sessionId)
 	return true;
 }
 
-bool ChatServer_Multi::SS_RemovePlayer(uint64_t sessionId)
+bool ChatServer_Multi::IN_RemovePlayer(uint64_t sessionId)
 {
 	Player* player;
 
@@ -173,7 +101,7 @@ void ChatServer_Multi::CreatePkt_SS_ReqSectorMove(Message* message, uint64_t ses
 	buffer->sectorX_ = sectorX;
 	buffer->sectorY_ = sectorY;
 
-	message->Initialize(sessionId, packet, SS_SECTOR_MOVE);
+	message->Initialize(sessionId, packet, IN_SECTOR_MOVE);
 }
 
 void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId, int64_t playerId,
@@ -192,10 +120,10 @@ void ChatServer_Multi::CreatePkt_SS_ReqChat(Message* message, uint64_t sessionId
 	buffer->sectorX_ = sectorX;
 	buffer->sectorY_ = sectorY;
 
-	message->Initialize(sessionId, packet, SS_CHAT);
+	message->Initialize(sessionId, packet, IN_CHAT);
 }
 
-bool ChatServer_Multi::SS_ReqSectorMove(uint64_t sessionId, Packet* packet)
+bool ChatServer_Multi::IN_ReqSectorMove(uint64_t sessionId, Packet* packet)
 {
 	Pkt_SectorMove* pkt = reinterpret_cast<Pkt_SectorMove*>(packet->GetBodyPtr());
 
@@ -233,7 +161,7 @@ bool ChatServer_Multi::SS_ReqSectorMove(uint64_t sessionId, Packet* packet)
 	return true;
 }
 
-bool ChatServer_Multi::SS_ReqChat(uint64_t sessionId, Packet* packet)
+bool ChatServer_Multi::IN_ReqChat(uint64_t sessionId, Packet* packet)
 {
 	Pkt_Chat* pkt = reinterpret_cast<Pkt_Chat*>(packet->GetBodyPtr());
 

@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\NetworkLibrary;C:\Study\mysql-connector-c++-9.7.0-winx64\include\jdbc;C:\Study\hiredis-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
@@ -125,6 +125,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -140,7 +141,7 @@
     <ClInclude Include="RpcModule.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ChatConfig.json" />
+    <None Include="chatconfig.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetworkLibrary\NetworkLibrary.vcxproj">

@@ -8,10 +8,6 @@ class RpcProxy
 {
 public:
 
-    NetServer* serverProxy_;
-
-public:
-
     void CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Email& email, Nickname& nickname, SessionKey& sessionKey);
     void SC_ResEnterChatServer(uint64_t sessionId, byte status, int64_t playerId);
     void CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort sectorX, ushort sectorY);
@@ -30,4 +26,6 @@ public:
     void CS_ReqHeartbeat(std::vector<uint64_t>& sessionIds);
     void CS_ReqLogin(std::vector<uint64_t>& sessionIds, int64_t userId, SessionKey& sessionKey);
     void SC_ResLogin(std::vector<uint64_t>& sessionIds, int64_t userId, byte status, Email& email, Nickname& nickname, IpAddress& gameServerIp, ushort gameServerPort, IpAddress& chatServerIp, ushort chatServerPort);
+
+    NetServer* owner_;
 };

@@ -10,30 +10,20 @@ public:
 
 	void Enqueue(T value)
 	{
-		lock_.lock();
+		std::lock_guard<std::mutex> lock(lock_);
 
 		queue_.push(value);
-
-		lock_.unlock();
 	}
 
 	bool Dequeue(T& value)
 	{
-		lock_.lock();
+		std::lock_guard<std::mutex> lock(lock_);
 
 		if (queue_.empty())
-		{
-			lock_.unlock();
-
 			return false;
-		}
 
 		value = queue_.front();
-
 		queue_.pop();
-
-		lock_.unlock();
-
 		return true;
 	}
 

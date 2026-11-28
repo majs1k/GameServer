@@ -1,11 +1,16 @@
+// -------------------------------------------------
+// 
+// 직렬화 버퍼에 담을 타입 전역 오버로딩
+// RPC 클래스 컴파일
+//
+// -------------------------------------------------
 #pragma once
 #include <vector>
 #include <string>
 
+#include "Utils/Packet.h"
 #include "CommonProtocol.h"
-#include "Rpc/RpcProxy.h"
 
-inline RpcProxy g_RpcProxy;
 
 inline Packet& operator<<(Packet& packet, std::string& str)
 {

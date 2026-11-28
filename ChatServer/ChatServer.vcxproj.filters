@@ -43,6 +43,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ChatConfig.json" />
+    <None Include="chatconfig.json" />
   </ItemGroup>
 </Project>

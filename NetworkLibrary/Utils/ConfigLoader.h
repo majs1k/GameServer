@@ -1,8 +1,8 @@
 #pragma once
 #include <fstream>
 #include <string>
-#include "rapidjson/document.h"
-#include "rapidjson/istreamwrapper.h"
+#include "../../rapidjson/document.h"
+#include "../../rapidjson/istreamwrapper.h"
 #include "Singleton.h"
 
 using namespace rapidjson;
@@ -58,10 +58,12 @@ public:
 		config.sessionMax = doc["SessionMax"].GetInt();
 		config.concurrentCount = doc["ConcurrentCount"].GetInt();
 		config.workerCount = doc["WorkerCount"].GetInt();
+
 		config.dbHost = doc["DBHost"].GetString();
 		config.dbUser = doc["DBUser"].GetString();
 		config.dbPassword = doc["DBPassword"].GetString();
 		config.dbSchema = doc["DBSchema"].GetString();
+
 		config.redisHost = doc["RedisHost"].GetString();
 		config.redisPort = doc["RedisPort"].GetInt();
 		return true;

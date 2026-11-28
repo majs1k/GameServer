@@ -8,14 +8,14 @@
 
 bool LoginServer::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& sessionKey)
 {
+	/// + 특정 플랫폼 API로 조회 -> 인증 성공 -> 세션키 발급(sessionKey)
+
 	Email email;
 	Nickname nickname;
 	IpAddress gameServerIpAddress = (IpAddress)u8"1.2.3.4";
 	unsigned short gameServerPort = 0;
 	IpAddress chatServerIpAddress;
 	unsigned short chatServerPort = 0;
-
-	/// + 특정 플랫폼 API로 조회 -> 인증 성공 -> 세션키 발급(sessionKey)
 
 	/// userId로 테이블 조회
 	auto query = mysql_.ExecuteQuery(
@@ -26,22 +26,20 @@ bool LoginServer::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& se
 	/// 조회 결과 없음
 	if (!query.result->next())
 	{
-		g_RpcProxy.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_FAIL, email, nickname,
+		proxy_.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_FAIL, email, nickname,
 			gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
 		return true;
 	}
 
-	//std::string status;
-	//bool success = redis_.Get("session:" + std::to_string(userId), status);
+	//bool success = redis_.Set("session:" + std::to_string(userId), "1", true, 60 * 60);
 
 	///// Key가 이미 존재해서 저장 x -> 중복 로그인
-	///// TODO: 중복 로그인 시 현재 연결은 유지 시 주석처리
-	//if (success)
+	//if (!success)
 	//{
 	//	/// 접속 세션 삭제
-	//	redis_.Del("session:" + std::to_string(userId));
+	//	//redis->Del("session:" + std::to_string(userId));
 
-	//	g_RpcProxy.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_GAME, email, nickname,
+	//	proxy_.SC_ResLogin(sessionId, 0, en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_GAME, email, nickname,
 	//		gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
 
 	//	/// + 게임 서버로 알림
@@ -49,14 +47,8 @@ bool LoginServer::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& se
 	//	return true;
 	//}
 
-	/// 유효기간 60초 발급
+	/// 유효기간 60초
 	redis_.Set("token:" + std::to_string(userId), sessionKey.sessionKey_, false, 60);
-
-	//std::string emailString = query.result->getString("email");
-	//std::string nicknameString = query.result->getString("nickname");
-
-	//Email email = emailString;
-	//Nickname nickname = nicknameString;
 
 	/// email, nickname -> std::string -> utf-16 (복사 생성자)
 	email = query.result->getString("email").asStdString();
@@ -85,11 +77,9 @@ bool LoginServer::CS_ReqLogin(uint64_t sessionId, int64_t userId, SessionKey& se
 	chatServerIpAddress = chatServerIp;
 	chatServerPort = 12001;
 
-	//wcscpy_s(chatServerIpAddress.ipAddress_, 16, L"127.0.0.1");
-
 	/// lvalue가 와야함
 	/// 로그인 응답
-	g_RpcProxy.SC_ResLogin(sessionId, userId, (unsigned char)en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_OK, email, nickname,
+	proxy_.SC_ResLogin(sessionId, userId, (unsigned char)en_PACKET_CS_LOGIN_RES_LOGIN::dfLOGIN_STATUS_OK, email, nickname,
 		gameServerIpAddress, gameServerPort, chatServerIpAddress, chatServerPort);
 
 	return true;

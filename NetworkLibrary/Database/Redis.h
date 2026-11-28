@@ -7,11 +7,16 @@
 #include <hiredis.h>
 #include <string>
 
+#include "../Utils/ConfigLoader.h"
+
 class Redis
 {
 public:
 
-	Redis() = default;
+	Redis()
+	{
+		Connect(config.redisHost, config.redisPort);
+	}
 
 	~Redis()
 	{
@@ -159,4 +164,31 @@ public:
 private:
 
 	redisContext* context_ = nullptr;
+};
+
+
+class RedisTls
+{
+public:
+
+	Redis& LocalRedis()
+	{
+		static thread_local Redis redis;
+		return redis;
+	}
+
+	bool Set(const std::string& key, const std::string& value, bool onlyNotExist = false, int expireSeconds = 0)
+	{
+		return LocalRedis().Set(key, value, onlyNotExist, expireSeconds);
+	}
+
+	bool Get(const std::string& key, std::string& value)
+	{
+		return LocalRedis().Get(key, value);
+	}
+
+	bool Del(const std::string& key)
+	{
+		return LocalRedis().Del(key);
+	}
 };

@@ -1,130 +1,30 @@
 #include "OmokServer.h"
 #include "RpcModule.h"
 
-bool OmokServer::ReqUserRegisterDB(__int64 sessionId, std::string& loginId, std::string& password)
-{
-	RESPONSE_CODE code = userRepository_.CreateUser(loginId, password);
 
-	g_DbProxy.ResUserRegisterDB(sessionId, code);
+bool OmokServer::ReqPlayerConnection(__int64 sessionId, int userId)
+{
+	auto stmt = mysql_.Execute(
+		"SELECT player_id, player_name, win, rating, money "
+		"FROM players "
+		"WHERE user_id = ?");
+
+	/// + db에 없을시 플레이어 생성하라 보내주기
+
+	p.playerId_ = result->getInt("player_id");
+	p.playerName_ = result->getString("player_name");
+	p.win_ = result->getInt("win");
+	p.rating_ = result->getInt("rating");
+	p.money_ = result->getInt("money");
 
 	return true;
 }
 
-bool OmokServer::ResUserRegisterDB(__int64 sessionId, RESPONSE_CODE code)
+bool OmokServer::ReqGameResult(int winnerId)
 {
-	g_RpcProxy.ResUserRegister(sessionId, code);
-
-	return true;
-}
-
-bool OmokServer::ReqUserLoginDB(__int64 sessionId, std::string& loginId, std::string& password)
-{
-	int userId = 0;
-
-	RESPONSE_CODE code = userRepository_.FindByLoginId(loginId, password, userId);
-
-	g_DbProxy.ResUserLoginDB(sessionId, code, userId);
-
-	return true;
-}
-
-bool OmokServer::ResUserLoginDB(__int64 sessionId, RESPONSE_CODE code, int userId)
-{
-	g_RpcProxy.ResUserLogin(sessionId, code, userId);
-
-	return true;
-}
-
-
-bool OmokServer::ReqPlayerRegisterDB(__int64 sessionId, int userId, std::string& playerName)
-{
-	RESPONSE_CODE code = playerRepository_.CreatePlayer(userId, playerName);
-
-	g_DbProxy.ResPlayerRegisterDB(sessionId, code);
-
-	return true;
-}
-
-bool OmokServer::ResPlayerRegisterDB(__int64 sessionId, RESPONSE_CODE code)
-{
-	g_RpcProxy.ResPlayerRegister(sessionId, code);
-
-	return true;
-}
-
-bool OmokServer::ReqPlayerConnectionDB(__int64 sessionId, int userId)
-{
-	Player p;
-	// 클라이언트 측에선 playerId 0일시 예외처리
-	p.playerId_ = 0;
-
-	playerRepository_.FindPlayerByUserId(userId, p);
-
-	// 잘못된 요청 (해당 유저아이디의 플레이어 없음)
-	if (p.playerId_ == 0)
-	{
-		g_RpcProxy.ResPlayerProfile(sessionId, p);
-
-		return true;
-	}
-
-	g_DbProxy.ResPlayerProfileDB(sessionId, p);
-
-	return true;
-}
-
-bool OmokServer::ResPlayerProfileDB(__int64 sessionId, Player& player)
-{
-	// 잘못된 요청 (플레이어 이미 서버 접속)
-	if (playerManager_.ContainsPlayer(player.playerId_))
-	{
-		player.playerId_ = -1;
-
-		g_RpcProxy.ResPlayerProfile(sessionId, player);
-
-		return true;
-	}
-
-	Player* newPlayer = new Player();
-	newPlayer->Initialize(sessionId, player.playerId_, player.playerName_, player.win_, player.lose_, player.rating_, player.money_, player.equippedInvenId_);
-
-	if (!playerManager_.AddPlayer(sessionId, newPlayer))
-	{
-		delete newPlayer;
-
-		// 잘못된 요청 (플레이어 db에 등록 x)
-		player.playerId_ = 0;
-
-		g_RpcProxy.ResPlayerProfile(sessionId, player);
-
-		return true;
-	}
-
-	g_RpcProxy.ResPlayerProfile(sessionId, player);
-
-	return true;
-}
-
-
-bool OmokServer::ReqGameResultDB(__int64 sessionId, int winnerId, int loserId)
-{
-	Player* winner = playerManager_.GetPlayerBySessionId(winnerId);
-
-	if (winner == nullptr)
-		return true;
-
-	Player* loser = playerManager_.GetPlayerBySessionId(loserId);
-
-	if (loser == nullptr)
-		return true;
-
-	db_->BeginTransaction();
-
-	playerRepository_.UpdateWinResult(winnerId, winner->win_, winner->rating_, winner->money_);
-
-	playerRepository_.UpdateLoseResult(loserId, loser->lose_, loser->rating_);
-
-	db_->Commit();
+	mysql_.Execute(
+		"UPDATE players SET win = win + 1, rating = rating + 1, money = mone + 1 "
+		"WHERE player_id = " + std::to_string(winnerId));
 
 	return true;
 }

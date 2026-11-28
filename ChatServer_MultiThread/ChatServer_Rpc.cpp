@@ -29,6 +29,7 @@ bool ChatServer_Multi::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerI
 	std::unordered_map<int64_t, Player*>::iterator it2;
 	std::unordered_map<int64_t, Player*>::iterator it3;
 
+	/// TODO: 수정? 여러 스레드에서 playerMap 접근시 이터레이터 개판될텐데??
 	{
 		std::lock_guard<std::mutex> lock(playerMapLock_);
 

@@ -124,7 +124,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\admin.BOOK-4Q6MBPPGPV\source\repos\GameServer\LoginServer</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <AdditionalDependencies>hiredis.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -137,7 +138,6 @@
     <ClCompile Include="CommonProtocol.cpp" />
     <ClCompile Include="LoginServerMain.cpp" />
     <ClCompile Include="LoginServer.cpp" />
-    <ClCompile Include="LoginServer_Protocol.cpp" />
     <ClCompile Include="LoginServer_Rpc.cpp" />
     <ClCompile Include="RpcModule.cpp" />
   </ItemGroup>
@@ -147,7 +147,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="LoginConfig.json" />
+    <None Include="loginconfig.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

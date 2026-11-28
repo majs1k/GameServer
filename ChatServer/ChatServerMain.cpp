@@ -5,7 +5,7 @@
 #include "Utils/Logger.h"
 #include "Utils/Profiler.h"
 
-#define CONFIG_FILENAME			L"ChatConfig.json"
+#define CONFIG_FILENAME			L"chatconfig.json"
 
 int main()
 {

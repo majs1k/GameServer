@@ -17,8 +17,7 @@ bool ChatServer::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Ema
 	// 이미 로그인 완료 시 실패 패킷만 보냄
 	if (player->isLogin_)
 	{
-		g_RpcProxy.SC_ResEnterChatServer(sessionId, ELOGIN::FAIL, playerId);
-
+		proxy_.SC_ResEnterChatServer(sessionId, ELOGIN::FAIL, playerId);
 		return true;
 	}
 
@@ -43,14 +42,27 @@ bool ChatServer::CS_ReqEnterChatServer(uint64_t sessionId, int64_t playerId, Ema
 		LOG("CHATSERVER", ELOG::SYSTEM_LEVEL, "duplicate login / id=%d", playerId);
 	}
 
-	// + 세션 키 인증
+	/// TODO: + 세션 키 인증
+	//std::string token;
+
+	//redis_.Get("token:" + std::to_string(playerId), token);
+
+	//if (token == sessionKey.sessionKey_)
+	//{
+	//	__debugbreak();
+
+	//	Disconnect(sessionId);
+	//}
+
+	//redis_.Del("token:" + std::to_string(playerId));
+
 
 	player->Initialize(playerId, email, nickname);
 	playerMap_.insert({ playerId, player });
 	// 로그인 성공 시 플레이어로 카운트
 	playerCount_++;
 
-	g_RpcProxy.SC_ResEnterChatServer(sessionId, ELOGIN::SUCCESS, playerId);
+	proxy_.SC_ResEnterChatServer(sessionId, ELOGIN::SUCCESS, playerId);
 	return true;
 }
 
@@ -100,7 +112,7 @@ bool ChatServer::CS_ReqSectorMove(uint64_t sessionId, int64_t playerId, ushort s
 
 	sector_[player->sectorY_][player->sectorX_].push_back(player);
 
-	g_RpcProxy.SC_ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
+	proxy_.SC_ResSectorMove(sessionId, player->playerId_, player->sectorX_, player->sectorY_);
 	return true;
 }
 
@@ -146,7 +158,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 			{
 				if (target->isLogin_)
 				{
-					//g_RpcProxy.ResMessage(target->sessionId_, player->playerId_, player->email_, player->nickname_, chat);
+					//proxy_.ResMessage(target->sessionId_, player->playerId_, player->email_, player->nickname_, chat);
 					sessionIds.push_back(target->sessionId_);
 				}
 			}
@@ -154,7 +166,7 @@ bool ChatServer::CS_ReqChat(uint64_t sessionId, int64_t playerId, Chat& chat)
 	}
 
 	/// packet 재활용
-	g_RpcProxy.SC_ResChat(sessionIds, player->playerId_, player->email_, player->nickname_, chat);
+	proxy_.SC_ResChat(sessionIds, player->playerId_, player->email_, player->nickname_, chat);
 
 	/// TODO: 디버깅
 	//if (chat.chat_[0] == L'=')
